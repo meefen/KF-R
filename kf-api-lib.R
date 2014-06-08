@@ -1,0 +1,61 @@
+##########################
+### Library for KF API ###
+##########################
+
+### API URLs
+loginURL = "rest/account/userLogin/"
+postsURL = "rest/content/getSectionPosts/"
+viewsURL = "rest/content/getSectionViews/"
+viewURL  = "rest/content/getView/"
+
+### Load utility functions
+source("utils/utils.R")
+
+library(jsonlite)
+
+CreateCurlHandle <- function() {
+  ### Create a curl handle that will be shared among API calls
+  
+  library(RCurl)
+  curl = getCurlHandle()
+  curlSetOpt(cookiejar = "", 
+             followlocation = TRUE, 
+             curl = curl) # do not need to read the cookies
+  return(curl)
+}
+
+Authenticate <- function(host, username, password, curl) {
+  ### Authenticate user, and return authentication results
+  
+  loginURL = paste0(host, loginURL)
+  auth = list(userName=username, password=password)
+  fromJSON(
+    postForm(loginURL, .params = auth, curl=curl, style="POST"),
+    flatten = TRUE
+  )
+}
+
+GetSectionPosts <- function(host, sectionId, curl) {
+  ### Get posts in a section
+  
+  pURL = paste0(host, postsURL, sectionId)
+  df = fromJSON(getURL(pURL, curl=curl), flatten = TRUE)
+  df$body = StripHTMLTags(df$body)
+  return(df)
+}
+
+GetSectionViews <- function(host, sectionId, curl) {
+  ### Get views in a section
+  
+  vURL = paste0(host, viewsURL, sectionId)
+  fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+}
+
+GetView <- function(host, viewId, curl) {
+  ### Get view info
+  
+  vURL = paste0(host, viewURL, viewId)
+  view = fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+  view$viewPostRefs$postInfo$body = StripHTMLTags(view$viewPostRefs$postInfo$body)
+  return(view)
+}

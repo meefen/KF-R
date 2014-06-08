@@ -1,0 +1,153 @@
+Minimal example of using KF APIs in R
+========================================================
+
+```{r, echo=FALSE}
+opts_chunk$set(warning=FALSE, message=FALSE, fig.width=10)
+```
+
+```{r}
+source("kf-api-lib.R") # load the function library
+
+library(ggplot2)
+library(ggthemes)
+library(tm)
+
+## Login info
+host = "http://kf.utoronto.ca:8080/kforum/"
+username = "bodong" # YOUR_USERNAME
+password = "000000" # YOUR_PASSWORD
+
+## Create a curl handle that will be shared among API calls
+curl = CreateCurlHandle()
+```
+
+## 1. User authentication
+
+```{r}
+## 1. User authentication
+regs = Authenticate(host, username, password, curl)
+regs[, c("sectionId", "sectionTitle")] # check sections I'm in
+
+## Choose a section/community I'm interested in
+userId = regs$authorInfo.guid[2]
+sectionId = regs$sectionId[2]
+```
+
+## 2. My posts
+
+```{r}
+## 2. My posts
+posts = GetSectionPosts(host, sectionId, curl)
+myPosts = FilterPostsByAuthors(posts, userId) # all my posts here
+# str(myPosts[1, ])
+```
+
+### 2.1. Compare number of my posts with the community average
+
+```{r}
+# 2.1. Compare number of my posts with the community average
+authors = do.call("rbind", posts$authors) # all unique authors
+tmp = data.frame(author=factor(c("Me","Average"), levels=c("Me","Average")),
+                 notes=c(nrow(myPosts), nrow(posts)/length(unique(authors$guid))))
+ggplot(data=tmp, aes(x=author, y=notes, fill=author)) +
+  geom_bar(colour="black", stat="identity") + 
+  ggtitle("Number of my posts compared to community average") + 
+  guides(fill=FALSE) + 
+  theme_solarized()
+```
+
+### 2.2. My posting calendar
+
+```{r}
+# 2.2. My posting calendar
+dates = strptime(myPosts$created, "%b %d, %Y %I:%M:%S %p")
+dates_str = as.character(format(dates, format="%Y-%m-%d"))
+tmp = data.frame(table(dates_str))
+names(tmp) = c("date", "value")
+CalendarHeatmap(tmp, title="Posting Activities")
+```
+
+# 2.3. My top terms
+
+```{r, results='hide'}
+# 2.3. My top terms
+myNotes = Corpus(VectorSource(myPosts$body))
+myDtm <- DocumentTermMatrix(myNotes, control = list(
+  #   stemming = TRUE, 
+  stopwords = TRUE, minWordLength = 3, 
+  removeNumbers = TRUE, removePunctuation = TRUE))
+myFreqTerms = findFreqTerms(myDtm, 8, 100)
+myFreq = colSums(inspect(myDtm[, myFreqTerms]))
+```
+
+```{r}
+tmp = sort(myFreq, decreasing=TRUE)
+data.frame(term=names(tmp), freq=tmp, row.names=NULL)
+```
+
+
+## 3. Views in my community
+
+```{r}
+## 3. Views in my community
+views = GetSectionViews(host, sectionId, curl)
+# str(views[1, ])
+views$title # view titles
+```
+
+## 4. Inspect one view
+
+```{r}
+## 4. Inspect one view
+viewId = views[15, "guid"] # I'm interested in view #15
+view = GetView(host, viewId, curl)
+```
+
+### 4.1. Number of posts in the view
+
+```{r}
+# 4.1. Number of posts in the view
+nrow(view$viewPostRefs)
+```
+
+### 4.2. Percentage of build-ons posts
+
+```{r}
+paste0(round(100 * nrow(view$buildOns) / nrow(view$viewPostRefs), 2), "%")
+```
+
+
+### 4.2. Revisualize the view
+
+```{r}
+# 4.2. Revisualize the view
+ggplot(view$viewPostRefs, aes(x=location$point$x, y=location$point$y)) + 
+  geom_text(aes(label=postInfo$title), hjust=0) + 
+  ggtitle(view$title) + 
+  scale_y_reverse() + theme_bw() + 
+  theme(axis.title=element_blank(), 
+        axis.text=element_blank(),
+        axis.ticks=element_blank(), 
+        panel.grid=element_blank())
+```
+
+### 4.3. Top terms in the view
+
+```{r, results='hide'}
+# 4.3. Top terms in the view
+notes = Corpus(VectorSource(view$viewPostRefs$postInfo$body))
+dtm <- DocumentTermMatrix(notes, control = list(
+  stopwords = TRUE, minWordLength = 3, 
+  removeNumbers = TRUE, removePunctuation = TRUE))
+freqTerms = findFreqTerms(dtm, 8, 100)
+freq = colSums(inspect(dtm[, freqTerms]))
+```
+
+```{r}
+tmp = sort(freq, decreasing=TRUE)
+data.frame(term=names(tmp), freq=tmp, row.names=NULL)
+
+# overlap between my freq terms and shared freq terms
+intersect(myFreqTerms, freqTerms)
+```
+
