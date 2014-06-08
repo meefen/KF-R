@@ -15,7 +15,7 @@ library(tm)
 ## Login info
 host = "http://kf.utoronto.ca:8080/kforum/"
 username = "bodong" # YOUR_USERNAME
-password = "000000" # YOUR_PASSWORD
+password = "******" # YOUR_PASSWORD
 
 ## Create a curl handle that will be shared among API calls
 curl = CreateCurlHandle()
