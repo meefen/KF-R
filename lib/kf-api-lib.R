@@ -29,10 +29,15 @@ Authenticate <- function(host, username, password, curl) {
   
   loginURL = paste0(host, loginURL)
   auth = list(userName=username, password=password)
-  fromJSON(
-    postForm(loginURL, .params = auth, curl=curl, style="POST"),
-    flatten = TRUE
-  )
+  tryCatch({
+    fromJSON(
+      postForm(loginURL, .params = auth, curl=curl, style="POST"),
+      flatten = TRUE
+    )
+  }, error = function(e) {
+    return(list())
+  })
+  
 }
 
 GetSectionPosts <- function(host, sectionId, curl) {

@@ -32,3 +32,11 @@ FilterPostsByAuthors <- function(posts, authorIds) {
   })
   posts[myPostsInd, ]
 }
+
+HTMLUL <- function(v) {
+  ### Create a UL element from a string vector
+  
+  paste0("<ul>",
+         paste0(paste0("<li>", v, "</li>"), collapse = ""),
+         "</ul>")
+}
