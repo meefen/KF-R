@@ -3,6 +3,7 @@
 # require(rChartsCalendar)
 require(tm)
 require(xtable)
+require(plyr)
 
 source("utils/utils.R") # Load utility functions
 source("lib/kf-api-lib.R") # Load KF API library
@@ -11,10 +12,13 @@ shinyServer(function(input, output, session) {
   
   ## Create a curl handle that will be shared among API calls
   curl = NULL
-  ## Cache authorId
+  
+  ## Cache authorId, sectionId
   authorId = NULL
-  ## Cache sectionId
   sectionId = NULL
+  #   curl <- CreateCurlHandle() #DEBUG
+  #   authorId = "cc1f8d0d-9ae9-428a-beb1-815b650973d8" # DEBUG
+  #   sectionId = "5bb8b862-88d8-4dfd-bad8-71b0a069dd6a" # DEBUG
   
   auth <- reactive({
     ### Reactive expression to authenticate a user
@@ -142,7 +146,7 @@ shinyServer(function(input, output, session) {
                      "<li># of posts: ", nrow(myPosts), "</li>",
                      "<li># of coauthors: ", length(unique(coAuthors$guid))-1, "</li>",
                      "<li># of promising ideas: ", nrow(pIdeas), "</li>",
-                     "<li># of words: ", sum(CountWords(myPosts$body)), "</li></ul>")
+                     "<li># of words: ", sum(CountWords(myPosts$body_text)), "</li></ul>")
       HTML(html)
     })
   })
@@ -169,6 +173,62 @@ shinyServer(function(input, output, session) {
     })
   })
   
+  getMyPostTS <- reactive({
+    
+    posts <- getMySectionPosts()
+    
+    # sort posts first -- very important
+    posts$date = as.Date(round(strptime(posts$created, "%b %d, %Y %I:%M:%S %p"), "day"))
+    posts = posts[with(posts, order(date)), ]
+    N <- 1e4  # some magic number, possibly an overestimate
+    tmp <- data.frame(date = rep(as.Date(.leap.seconds[1]), N), 
+                      post = rep(0, N),
+                      vocab = rep(0, N), stringsAsFactors=FALSE)
+    j = 1
+    for(i in 1:nrow(posts)) {
+      post = posts[i, ]
+      date = post$date
+      
+      ## same date already in
+      idx = which(tmp$date == date)
+      if (length(idx) > 0) {
+        tmp[idx, 2] = tmp[idx, 2] + 1
+        tmp[idx, 3] = tmp[idx, 3] + CountWords(post$body_text)
+        next
+      }
+      x = max(tmp$post) + 1
+      y = max(tmp$vocab) + CountWords(post$body_text)
+      tmp[j, ] <- list(date, x, y)
+      j = j + 1
+    }
+    tmp = tmp[tmp$post != 0, ]
+    tmp[with(tmp, order(date)), ]
+  })
+  
+  output$myPostsTS <- renderChart({
+    ### Time series of my posts
+    
+    withProgress(session, {
+      setProgress(message = "May take a while... please wait", 
+                  detail = "Compiling time series...")
+      
+      tmp = getMyPostTS()
+      
+      setProgress(detail = "Plotting...")
+      
+      tmp$date = as.character(tmp$date)
+      d <- mPlot(
+        post ~ date,
+        data = tmp,
+        type = 'Line'
+      )
+      d$set(lineWidth = 1)
+      
+      d$addParams(dom = "myPostsTS")
+      d
+    })
+  })
+  
   output$myPostsCalendar <- renderPlot({
     
     withProgress(session, {
@@ -185,6 +245,30 @@ shinyServer(function(input, output, session) {
       CalendarHeatmap(tmp, title="Posting Activities")
     })
   })
+
+  output$myPostsVocabTS <- renderChart({
+    
+    withProgress(session, {
+      setProgress(message = "May take a while... please wait", 
+                  detail = "Compiling time series...")
+      
+      tmp = melt(getMyPostTS(), id = "date")
+      
+      setProgress(detail = "Plotting...")
+      
+      tmp$date = as.character(tmp$date)
+      d <- mPlot(
+        value ~ date,
+        data = tmp,
+        group = "variable",
+        type = 'Line'
+      )
+      d$set(lineWidth = 1)
+      
+      d$addParams(dom = "myPostsVocabTS")
+      d
+    })
+  })
   
   output$myPostsTerms <- renderTable({
     
@@ -194,7 +278,7 @@ shinyServer(function(input, output, session) {
       myPosts <- getMySectionPosts()
       
       setProgress(detail = "Training corpus...")
-      myNotes = Corpus(VectorSource(myPosts$body))
+      myNotes = Corpus(VectorSource(myPosts$body_text))
       myDtm <- DocumentTermMatrix(myNotes, control = list(
         #   stemming = TRUE, 
         stopwords = TRUE, minWordLength = 3, 
@@ -205,6 +289,45 @@ shinyServer(function(input, output, session) {
       tmp = sort(myFreq, decreasing=TRUE)
       df = data.frame(term=names(tmp), freq=as.integer(tmp), row.names=NULL)
       xtable(df, display=c("d", "s", "d"))
+    })
+  })
+  
+  output$myPostsTimeline <- renderChart({
+    
+    withProgress(session, {
+      setProgress(message = "May take a while... please wait", 
+                  detail = "Getting your posts...")
+      posts <- getMySectionPosts()
+      posts$date = as.Date(round(strptime(posts$created, "%b %d, %Y %I:%M:%S %p"), "day"))
+      posts = posts[with(posts, order(date)), ]
+      
+      d4 <- alply(posts, 1, function(x){
+        list(
+          startDate = gsub("-", ",", as.character(x$date)),
+          headline = x$title,
+          text = x$body,
+          asset = list()
+        )
+      })
+      
+      # Create Timeline
+      m = Timeline$new()
+      m$main(
+        headline =  "My timeline",
+        type = 'default',
+        text = "Using this timeline, you can review all your posts in their chronological order.",
+        startDate =  d4[1][[1]]$startDate,
+        asset = list(media = 'http://teachbytes.files.wordpress.com/2014/01/timeline-clipart.jpg')
+      )
+      m$config(
+        font = "Merriweather-Newscycle"
+      )
+      names(d4) <- NULL
+      m$event(d4)
+      m$addParams(dom = "myPostsTimeline")
+      m$save("embed/myPostTimeline.html")
+#       m$save(paste0("embed/myPostTimeline_", authorId, ".html"))
+      m
     })
   })
   
@@ -230,7 +353,7 @@ shinyServer(function(input, output, session) {
                      "<li># of posts: ", nrow(posts), "</li>",
                      "<li># of authors: ", length(unique(authorIds)), "</li>",
                      "<li># of promising ideas: ", length(pIdeaIds), "</li>",
-                     "<li># of words: ", sum(CountWords(posts$body)), "</li></ul>")
+                     "<li># of words: ", sum(CountWords(posts$body_text)), "</li></ul>")
       HTML(html)
     })
     
@@ -263,12 +386,12 @@ shinyServer(function(input, output, session) {
       idx = which(tmp$author == post$primaryAuthorId & tmp$date == date)
       if (length(idx) > 0) {
         tmp[idx, 3] = tmp[idx, 3] + 1
-        tmp[idx, 4] = tmp[idx, 4] + CountWords(post$body)
+        tmp[idx, 4] = tmp[idx, 4] + CountWords(post$body_text)
         next
       }
       ## else
       idx = which(tmp$author == post$primaryAuthorId)
-      x = 1; y = CountWords(post$body)
+      x = 1; y = CountWords(post$body_text)
       if (length(idx) > 0) { ## same author already in
         x = max(tmp$post[idx]) + x
         y = max(tmp$vocab[idx]) + y
@@ -302,14 +425,14 @@ shinyServer(function(input, output, session) {
       d$yAxis(axisLabel = "Post Count")
       d$xAxis(axisLabel = "Date")
       
-#       tmp$date = as.character(tmp$date)
-#       d <- mPlot(
-#         post ~ date,
-#         data = tmp,
-#         group = "firstName",
-#         type = 'Line'
-#       )
-#       d$set(lineWidth = 1)
+      #       tmp$date = as.character(tmp$date)
+      #       d <- mPlot(
+      #         post ~ date,
+      #         data = tmp,
+      #         group = "firstName",
+      #         type = 'Line'
+      #       )
+      #       d$set(lineWidth = 1)
       
       d$addParams(dom = "groupWriting")
       d
@@ -336,14 +459,14 @@ shinyServer(function(input, output, session) {
       d$yAxis(axisLabel = "Vocabulary Count")
       d$xAxis(axisLabel = "Date")
       
-#       tmp$date = as.character(tmp$date)
-#       d <- mPlot(
-#         vocab ~ date,
-#         data = tmp,
-#         group = "firstName",
-#         type = 'Line'
-#       )
-#       d$set(lineWidth = 1)
+      #       tmp$date = as.character(tmp$date)
+      #       d <- mPlot(
+      #         vocab ~ date,
+      #         data = tmp,
+      #         group = "firstName",
+      #         type = 'Line'
+      #       )
+      #       d$set(lineWidth = 1)
       
       d$addParams(dom = "groupWritingVocab")
       d

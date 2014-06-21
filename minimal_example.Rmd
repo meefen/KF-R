@@ -13,7 +13,8 @@ library(ggthemes)
 library(tm)
 
 ## Login info
-host = "http://kf.utoronto.ca:8080/kforum/"
+host = "http://132.203.154.41:8080/kforum/"
+# host = "http://kf.utoronto.ca:8080/kforum/"
 username = "bodong" # YOUR_USERNAME
 password = "000000" # YOUR_PASSWORD
 
@@ -71,7 +72,7 @@ CalendarHeatmap(tmp, title="Posting Activities")
 
 ```{r, results='hide'}
 # 2.3. My top terms
-myNotes = Corpus(VectorSource(myPosts$body))
+myNotes = Corpus(VectorSource(myPosts$body_text))
 myDtm <- DocumentTermMatrix(myNotes, control = list(
   #   stemming = TRUE, 
   stopwords = TRUE, minWordLength = 3, 
@@ -135,7 +136,7 @@ ggplot(view$viewPostRefs, aes(x=location$point$x, y=location$point$y)) +
 
 ```{r, results='hide'}
 # 4.3. Top terms in the view
-notes = Corpus(VectorSource(view$viewPostRefs$postInfo$body))
+notes = Corpus(VectorSource(view$viewPostRefs$postInfo$body_text))
 dtm <- DocumentTermMatrix(notes, control = list(
   stopwords = TRUE, minWordLength = 3, 
   removeNumbers = TRUE, removePunctuation = TRUE))

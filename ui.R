@@ -12,8 +12,9 @@ shinyUI(
       sidebarLayout(
         sidebarPanel(
           wellPanel(
-            textInput("host", label = "Host", value = "http://132.203.154.41:8080/kforum/"),
-            # http://kf.utoronto.ca:8080/kforum/
+            textInput("host", label = "Host", 
+#                       value = "http://132.203.154.41:8080/kforum/"),
+                      value = "http://kf.utoronto.ca:8080/kforum/"),
             textInput("username", label = "Username", value = "bodong"),
             textInput("password", label = "Password", value = "000000"),
             br(),
@@ -35,7 +36,7 @@ shinyUI(
         h4("Please login first!")
       ),
       conditionalPanel(
-        "input.doLogin > 0",
+        TRUE,#"input.doLogin > 0", # DEBUG
         navlistPanel(
           "Group Analytics",
           tabPanel(
@@ -50,13 +51,14 @@ shinyUI(
           "-----",
           tabPanel(
             "Writing",
-            h4("Writing Activities"),
-            showOutput("groupWriting", "nvd3"),
-            h4("Vocabulary Growth"),
-            showOutput("groupWritingVocab", "nvd3")
+            tabsetPanel(
+              type = "pills", 
+              tabPanel("Writing Activities", showOutput("groupWriting", "nvd3")),
+              tabPanel("Vocabulary Growth", showOutput("groupWritingVocab", "nvd3"))
+            )
           ),
           tabPanel(
-            "SemanticOverlap",
+            "Semantic Overlap",
             showOutput("semanticOverlap", "polycharts")
           ),
           "-----",
@@ -76,27 +78,38 @@ shinyUI(
         h4("Please login first!")
       ),
       conditionalPanel(
-        "input.doLogin > 0",
+        TRUE,#"input.doLogin > 0", # DEBUG
         navlistPanel(
           "My Contributions",
           
           tabPanel(
             "Posts",
             tabsetPanel(
-              type = "tabs", 
+              type = "pills", 
               tabPanel("Summary", htmlOutput("myPostsInfo")),
-              tabPanel("Posting Activities", 
+              tabPanel("How many did I post?",
+                       showOutput("myPostsCompare", "polycharts")),
+              tabPanel("When did I post?",
+                       h4("Time Series"),
+                       showOutput("myPostsTS", "nvd3"),
                        h4("Calendar view"),
-                       plotOutput("myPostsCalendar"),
-                       h4("Compare with community average"),
-                       showOutput("myPostsCompare", "polycharts")
-              ),
+                       plotOutput("myPostsCalendar")),
+#               tabPanel("Posting Activities",
+#                        h4("Compare with community average"),
+#                        showOutput("myPostsCompare", "polycharts"),
+#                        h4("Time Series"),
+#                        showOutput("myPostsTS", "nvd3"),
+#                        h4("Calendar view"),
+#                        plotOutput("myPostsCalendar")
+#               ),
               # chartOutput("myPostsCalendar", lib = "calmap", package = "rChartsCalendar"),
-              tabPanel("Writing",
+              tabPanel("What did I post?",
                        h4("Vocabulary Growth"),
+                       showOutput("myPostsVocabTS", "nvd3"),
                        h4("Top Terms"),
-                       tableOutput("myPostsTerms")
-              )
+                       tableOutput("myPostsTerms")),
+              tabPanel("Timeline",
+                       showOutput("myPostsTimeline", "timeline"))
             )
           ),
           

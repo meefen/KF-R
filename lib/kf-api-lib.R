@@ -45,7 +45,7 @@ GetSectionPosts <- function(host, sectionId, curl) {
   
   pURL = paste0(host, postsURL, sectionId)
   df = fromJSON(getURL(pURL, curl=curl), flatten = TRUE)
-  df$body = StripHTMLTags(df$body)
+  df$body_text = StripHTMLTags(df$body)
   return(df)
 }
 
@@ -61,6 +61,6 @@ GetView <- function(host, viewId, curl) {
   
   vURL = paste0(host, viewURL, viewId)
   view = fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
-  view$viewPostRefs$postInfo$body = StripHTMLTags(view$viewPostRefs$postInfo$body)
+  view$viewPostRefs$postInfo$body_text = StripHTMLTags(view$viewPostRefs$postInfo$body)
   return(view)
 }
