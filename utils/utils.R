@@ -12,7 +12,7 @@ CalendarHeatmap <- function(data, title="") {
   library(lattice)
   library(chron)
   tryCatch({
-    source("utils/calendarHeat.R")
+    source("calendarHeat.R")
   }, error = function(e) {
     source("http://blog.revolutionanalytics.com/downloads/calendarHeat.R")
   })
@@ -39,4 +39,10 @@ HTMLUL <- function(v) {
   paste0("<ul>",
          paste0(paste0("<li>", v, "</li>"), collapse = ""),
          "</ul>")
+}
+
+CountWords <- function(str) {
+  ### Roughly count words in a string
+  
+  sapply(gregexpr("\\W+", str), length) + 1
 }
