@@ -4,6 +4,7 @@
 require(tm)
 require(xtable)
 require(plyr)
+require(reshape2)
 
 source("utils/utils.R") # Load utility functions
 source("lib/kf-api-lib.R") # Load KF API library
@@ -325,7 +326,7 @@ shinyServer(function(input, output, session) {
       names(d4) <- NULL
       m$event(d4)
       m$addParams(dom = "myPostsTimeline")
-      m$save("embed/myPostTimeline.html")
+#       m$save("www/embed/myPostTimeline.html")
 #       m$save(paste0("embed/myPostTimeline_", authorId, ".html"))
       m
     })
@@ -361,7 +362,42 @@ shinyServer(function(input, output, session) {
   
   output$scaffoldTracker <- renderChart({
     
+    ### Note: scaffolds are saved with CSS class: "startLabelTag"
     
+    posts <- getSectionPosts()
+    
+    scaffolds <- unlist(alply(posts, 1, function(x) {
+      r <- regexpr("class=\"startLabelTag\">(.*?)</span>", x$body)
+      m <- regmatches(x$body, r)
+      gsub("class=\"startLabelTag\">|</span>", "", m)
+    }))
+    
+    tmp = data.frame(table(scaffolds))
+    tmp = tmp[with(tmp, order(-Freq)), ]
+    
+#     d1 <- dPlot(
+#       x = "Freq", 
+#       y = "scaffolds", 
+#       data = tmp, 
+#       type = 'bar') 
+#     d1$xAxis(type = "addMeasureAxis")
+#     d1$yAxis(type = "addCategoryAxis", orderRule = "Freq", horizontalAlign = "right")
+#     d1$addParams(dom = "scaffoldTracker")
+#     d1
+    
+    n1 <- nPlot(Freq ~ scaffolds, data = tmp, color="scaffolds", type = "multiBarHorizontalChart")
+    n1$chart(
+      showControls = FALSE, 
+      showLegend = FALSE,
+      margin = list(left = 6 * max(nchar(scaffolds))),
+      tooltipContent = "#! function(key, x, y) { 
+          return x + ': ' + Math.round(y) 
+          } !#"
+    )
+    n1$yAxis(axisLabel = "Frequency",
+             tickFormat="#! function(d) {return d3.format(',f')(d);} !#")
+    n1$addParams(dom = "scaffoldTracker")
+    n1
   })
   
   getGroupPostTS <- reactive({
@@ -423,7 +459,10 @@ shinyServer(function(input, output, session) {
         type = 'lineChart'
       )
       d$yAxis(axisLabel = "Post Count")
-      d$xAxis(axisLabel = "Date")
+      d$xAxis(
+        axisLabel = "Date",
+        tickFormat="#!function(d) {return d3.time.format('%b %Y')(new Date( d * 86400000 ));}!#"
+      )
       
       #       tmp$date = as.character(tmp$date)
       #       d <- mPlot(
@@ -457,7 +496,10 @@ shinyServer(function(input, output, session) {
         type = 'lineChart'
       )
       d$yAxis(axisLabel = "Vocabulary Count")
-      d$xAxis(axisLabel = "Date")
+      d$xAxis(
+        axisLabel = "Date",
+        tickFormat="#!function(d) {return d3.time.format('%b %Y')(new Date( d * 86400000 ));}!#"
+      )
       
       #       tmp$date = as.character(tmp$date)
       #       d <- mPlot(

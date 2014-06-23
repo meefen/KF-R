@@ -2,4 +2,5 @@
 
 require(shinyIncubator)
 require(rCharts) # @dev
-options(RCHART_LIB = c('polycharts', 'morris', "nvd3", "timeline"))
+
+options(RCHART_LIB = c('polycharts', 'morris', "nvd3", "timeline", "dimple"))

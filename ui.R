@@ -13,14 +13,14 @@ shinyUI(
         sidebarPanel(
           wellPanel(
             textInput("host", label = "Host", 
-#                       value = "http://132.203.154.41:8080/kforum/"),
-                      value = "http://kf.utoronto.ca:8080/kforum/"),
-            textInput("username", label = "Username", value = "bodong"),
-            textInput("password", label = "Password", value = "000000"),
-            br(),
-            actionButton("doLogin", label = "Login")
-          ),
-          uiOutput("selectSection")
+                      value = "http://132.203.154.41:8080/kforum/")
+            #                       value = "http://kf.utoronto.ca:8080/kforum/")
+            ,textInput("username", label = "Username", value = "bodong")
+            ,textInput("password", label = "Password", value = "000000")
+            ,br()
+            ,actionButton("doLogin", label = "Login")
+          )
+          ,uiOutput("selectSection")
         ),
         mainPanel(
           htmlOutput("sectionInfo")
@@ -46,7 +46,7 @@ shinyUI(
           "-----",
           tabPanel(
             "ScaffoldTracker",
-            showOutput("scaffoldTracker", "morris")
+            showOutput("scaffoldTracker", "nvd3")
           ),
           "-----",
           tabPanel(
@@ -59,11 +59,13 @@ shinyUI(
           ),
           tabPanel(
             "Semantic Overlap",
+            h3("TODO"),
             showOutput("semanticOverlap", "polycharts")
           ),
           "-----",
           tabPanel(
             "Social Network",
+            h3("TODO"),
             plotOutput("socialNetwork")
           )
         )
@@ -91,21 +93,21 @@ shinyUI(
                        showOutput("myPostsCompare", "polycharts")),
               tabPanel("When did I post?",
                        h4("Time Series"),
-                       showOutput("myPostsTS", "nvd3"),
+                       showOutput("myPostsTS", "morris"),
                        h4("Calendar view"),
                        plotOutput("myPostsCalendar")),
-#               tabPanel("Posting Activities",
-#                        h4("Compare with community average"),
-#                        showOutput("myPostsCompare", "polycharts"),
-#                        h4("Time Series"),
-#                        showOutput("myPostsTS", "nvd3"),
-#                        h4("Calendar view"),
-#                        plotOutput("myPostsCalendar")
-#               ),
+              #               tabPanel("Posting Activities",
+              #                        h4("Compare with community average"),
+              #                        showOutput("myPostsCompare", "polycharts"),
+              #                        h4("Time Series"),
+              #                        showOutput("myPostsTS", "nvd3"),
+              #                        h4("Calendar view"),
+              #                        plotOutput("myPostsCalendar")
+              #               ),
               # chartOutput("myPostsCalendar", lib = "calmap", package = "rChartsCalendar"),
               tabPanel("What did I post?",
                        h4("Vocabulary Growth"),
-                       showOutput("myPostsVocabTS", "nvd3"),
+                       showOutput("myPostsVocabTS", "morris"),
                        h4("Top Terms"),
                        tableOutput("myPostsTerms")),
               tabPanel("Timeline",
@@ -115,7 +117,7 @@ shinyUI(
           
           tabPanel(
             "Collaboration",
-            h3("Collaboration with others...")
+            h3("TODO")
           )
         )
       )
@@ -129,7 +131,7 @@ shinyUI(
         fluidRow(
           column(
             5,
-            includeMarkdown("about.md"),
+            includeMarkdown("www/about.md"),
             offset = 1
           ),
           column(
