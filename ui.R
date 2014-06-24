@@ -2,6 +2,13 @@
 
 require(markdown)
 
+## For debug: read default testing account info
+auth = tryCatch(
+  read.table("auth.txt"),
+  error = function(e) data.frame(c("", "")),
+  warning = function(w)  data.frame(c("", ""))
+)
+
 shinyUI(
   navbarPage(
     "KF API Demo",
@@ -15,8 +22,8 @@ shinyUI(
             textInput("host", label = "Host", 
                       value = "http://132.203.154.41:8080/kforum/")
             #                       value = "http://kf.utoronto.ca:8080/kforum/")
-            ,textInput("username", label = "Username", value = "bodong")
-            ,textInput("password", label = "Password", value = "000000")
+            ,textInput("username", label = "Username", value = auth[1, 1])
+            ,textInput("password", label = "Password", value = auth[2, 1])
             ,br()
             ,actionButton("doLogin", label = "Login")
           )
@@ -36,7 +43,7 @@ shinyUI(
         h4("Please login first!")
       ),
       conditionalPanel(
-        TRUE,#"input.doLogin > 0", # DEBUG
+        "input.doLogin > 0", # DEBUG
         navlistPanel(
           "Group Analytics",
           tabPanel(
@@ -80,7 +87,7 @@ shinyUI(
         h4("Please login first!")
       ),
       conditionalPanel(
-        TRUE,#"input.doLogin > 0", # DEBUG
+        "input.doLogin > 0", # DEBUG
         navlistPanel(
           "My Contributions",
           
