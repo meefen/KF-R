@@ -37,20 +37,76 @@ kf.sna.getdata = function(){
   logs <<- GetLogs(url, viewId, cookie)
 }
 
-kf.sna.show.old = function(){
+kf.sna.show = function(){
+  g <- kf.sna.createigraph()
+  plot(g, layout=layout.circle, vertex.size=15, vertex.label.color="black", vertex.color="red", edge.arrow.size=0.5, edge.curved=F)
+}
+
+kf.sna.createigraph = function(){
+  readlogs = kf.sna.readlogs()
+  df <- data.frame("source"=readlogs$from, "target"=readlogs$to)
+  g <- graph.data.frame(df, directed=TRUE)
+  return(g);
+}
+
+kf.sna.gephi.static = function(){
+  library(rgexf)
+  gexf <- igraph.to.gexf(kf.sna.createigraph())
+  print(gexf, "kf.gexf")
+}
+
+kf.sna.gephi = function(){ #dynamic
+  library(rgexf)  
+  authors = data.frame("id"=authors$userName, "name"=authors$userName)
+  readlogs = kf.sna.readlogs.aggregated()
+  edges = data.frame("source"=readlogs$from, "target"=readlogs$to)
+  edges_dynamic = data.frame("start"=kf.sna.to.gephitime(readlogs$timestamp), "end"=NA)
+  write.gexf(nodes = authors, edges = edges, edgeDynamic = edges_dynamic, tFormat="dateTime", defaultedgetype = "directed", output = "kfdynamic.gexf")
+  #write.gexf(nodes = nodes_df, edges = edges_df, edgesAtt = edges_att, nodesVizAtt = nodes_att_viz, edgesVizAtt = edges_att_viz, defaultedgetype = "undirected", output = "lesmis.gexf")}
+}
+
+kf.sna.to.gephitime = function(time){
+  return (as.character(time, "%Y-%m-%dT%H:%M:%S"))
+}
+
+kf.sna.condor3 = function(){
+  authors = data.frame("id"=authors$userName, "name"=authors$userName, "timestamp"=NA)
+  write.table(authors, file="actor.csv", sep=",", row.names=FALSE)  
+  readlogs = kf.sna.readlogs()
+  edges = data.frame("source"=readlogs$from, "target"=readlogs$to, "timestamp"=kf.sna.to.condortime(readlogs$timestamp))
+  write.table(edges, file="link.csv", sep=",", row.names= FALSE)
+}
+
+kf.sna.to.condortime = function(time){
+  return (as.character(time, "%d/%m/%Y %H:%M"))
+}
+
+kf.sna.readlogs = function(){
   primaryAuthorIds <- posts$primaryAuthorId
   names(primaryAuthorIds) = unique(posts$guid)
   authornames <- authors$userName
   names(authornames) = unique(authors$guid)
-  #posttitles <- posts$title
-  #names(posttitles) = unique(posts$guid)
   
   readlogs = subset(logs, operationType=="READ" & entityType=="POST")
-  #logs3 = data.frame(logs2$userName, logs2$accessTime, authornames[primaryAuthorIds[logs2$entityId]])
-  relations = data.frame(readlogs$userName, authornames[primaryAuthorIds[readlogs$entityId]])
-  g <- graph.data.frame(relations, directed=TRUE)
-  #plot(g,layout=layout.fruchterman.reingold)
-  plot(g, layout=layout.circle, vertex.size=15, vertex.label.color="black", vertex.color="red", edge.arrow.size=0.5, edge.curved=F)
+  readlogs = data.frame("from"=readlogs$userName, "to"=authornames[primaryAuthorIds[readlogs$entityId]], timestamp=kf.sna.time(readlogs$accessTime))
+  return (readlogs)
+}
+
+kf.sna.readlogs.aggregated = function(){
+  readlogs = kf.sna.readlogs()
+  time = aggregate(list("timestamp"=readlogs$timestamp), list("from"=readlogs$from, "to"=readlogs$to), FUN=kf.sna.first)
+  count = aggregate(list("count"=readlogs$timestamp), list("from"=readlogs$from, "to"=readlogs$to), FUN=length)
+  merged = merge(time, count)
+  sorted = merged[order(merged$timestamp), ]
+  return(sorted)
+}
+
+kf.sna.first = function(x){
+  return(x[1])
+}
+
+kf.sna.time = function(time){
+  return(strptime(time, "%b %d, %Y %I:%M:%S %p"))
 }
 
 kf.sna.shiny.install = function(){
@@ -66,66 +122,20 @@ kf.sna.shiny = function(){
   runApp()
 }
 
-kf.sna.show = function(){
-  g <- kf.sna.createigraph()
-  plot(g, layout=layout.circle, vertex.size=15, vertex.label.color="black", vertex.color="red", edge.arrow.size=0.5, edge.curved=F)
-}
+# kf.sna.show.old = function(){
+#   primaryAuthorIds <- posts$primaryAuthorId
+#   names(primaryAuthorIds) = unique(posts$guid)
+#   authornames <- authors$userName
+#   names(authornames) = unique(authors$guid)
+#   #posttitles <- posts$title
+#   #names(posttitles) = unique(posts$guid)
+#   
+#   readlogs = subset(logs, operationType=="READ" & entityType=="POST")
+#   #logs3 = data.frame(logs2$userName, logs2$accessTime, authornames[primaryAuthorIds[logs2$entityId]])
+#   relations = data.frame(readlogs$userName, authornames[primaryAuthorIds[readlogs$entityId]])
+#   g <- graph.data.frame(relations, directed=TRUE)
+#   #plot(g,layout=layout.fruchterman.reingold)
+#   plot(g, layout=layout.circle, vertex.size=15, vertex.label.color="black", vertex.color="red", edge.arrow.size=0.5, edge.curved=F)
+# }
 
-kf.sna.createigraph = function(){
-  primaryAuthorIds <- posts$primaryAuthorId
-  names(primaryAuthorIds) = unique(posts$guid)
-  authornames <- authors$userName
-  names(authornames) = unique(authors$guid)
-  
-  readlogs = subset(logs, operationType=="READ" & entityType=="POST")
-  relations = data.frame(readlogs$userName, authornames[primaryAuthorIds[readlogs$entityId]])
-  g <- graph.data.frame(relations, directed=TRUE)
-  return(g);
-}
 
-kf.sna.gephi.static = function(){
-  library(rgexf)
-  gexf <- igraph.to.gexf(kf.sna.createigraph())
-  print(gexf, "kf.gexf")
-}
-
-kf.sna.gephi.dynamic = function(){
-  library(rgexf)
-  
-  primaryAuthorIds <- posts$primaryAuthorId
-  names(primaryAuthorIds) = unique(posts$guid)
-  authornames <- authors$userName
-  names(authornames) = unique(authors$guid)
-  
-  readlogs = subset(logs, operationType=="READ" & entityType=="POST")  
-  authors = data.frame("id"=authors$userName, "name"=authors$userName)
-  edges = data.frame("source"=readlogs$userName, "target"=authornames[primaryAuthorIds[readlogs$entityId]])
-  edges_dynamic = data.frame("start"=kf.sna.gephi.converttime(readlogs$accessTime), "end"=NA)
-  write.gexf(nodes = authors, edges = edges, edgeDynamic = edges_dynamic, tFormat="dateTime", defaultedgetype = "directed", output = "kfdynamic.gexf")
-  #write.gexf(nodes = nodes_df, edges = edges_df, edgesAtt = edges_att, nodesVizAtt = nodes_att_viz, edgesVizAtt = edges_att_viz, defaultedgetype = "undirected", output = "lesmis.gexf")}
-}
-
-kf.sna.gephi.converttime = function(time){
-  datetime = strptime(time, "%b %d, %Y %I:%M:%S %p")
-  converted = as.character(datetime, "%Y-%m-%dT%H:%M:%S")
-  return(converted)
-}
-
-kf.sna.condor3 = function(){
-  primaryAuthorIds <- posts$primaryAuthorId
-  names(primaryAuthorIds) = unique(posts$guid)
-  authornames <- authors$userName
-  names(authornames) = unique(authors$guid)
-  
-  readlogs = subset(logs, operationType=="READ" & entityType=="POST")    
-  relations = data.frame("source"=readlogs$userName, "target"=authornames[primaryAuthorIds[readlogs$entityId]], "timestamp"=kf.sna.condor3.converttime(readlogs$accessTime))
-  write.table(relations, file="link.csv", sep=",", row.names= FALSE)
-  authors = data.frame("id"=authors$userName, "name"=authors$userName, "timestamp"="NA")
-  write.table(authors, file="actor.csv", sep=",", row.names=FALSE)
-}
-
-kf.sna.condor3.converttime = function(time){
-  datetime = strptime(time, "%b %d, %Y %I:%M:%S %p")
-  converted = as.character(datetime, "%d/%m/%Y %H:%M")
-  return(converted)
-}
