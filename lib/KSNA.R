@@ -1,6 +1,17 @@
+kfservers = c("http://localhost:8080/kforum/", "http://132.203.154.41:8080/kforum/")
+
+kf.sna.init = function(){
+  return (kf.sna.getdata())
+}
 
 kf.sna.getdata = function(){
-  url = "http://localhost:8080/kforum/"
+  print(data.frame(kfservers))
+  server = readline("server? ");
+  if(nchar(server) <= 0){
+    return();
+  } 
+  serverNo = strtoi(server)
+  url = kfservers[serverNo]
     
   username = readline("username? ");
   if(nchar(username) <= 0){
@@ -32,12 +43,16 @@ kf.sna.getdata = function(){
     return();
   }
   viewId = views[selectedNo, "guid"];
+  print("Retrieving...")
   posts <<- GetSectionPosts(url, communityId, cookie)
   authors <<- GetAllAuthors(url, communityId, cookie)
   logs <<- GetLogs(url, viewId, cookie)
+  
+  return ("OK you can check SNA by 'kf.sna.show()'")
 }
 
 kf.sna.show = function(){
+  library(igraph)
   g <- kf.sna.createigraph()
   plot(g, layout=layout.circle, vertex.size=15, vertex.label.color="black", vertex.color="red", edge.arrow.size=0.5, edge.curved=F)
 }
@@ -125,6 +140,8 @@ kf.sna.shiny = function(){
   library(shiny)
   runApp()
 }
+
+print("loading program finished. please run 'kf.sna.init()'")
 
 # kf.sna.show.old = function(){
 #   primaryAuthorIds <- posts$primaryAuthorId
