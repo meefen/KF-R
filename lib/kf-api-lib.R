@@ -74,18 +74,18 @@ GetLogs <- function(host, viewId, curl) {
   })
 }
 
-GetAllAuthors <- function(host, communityId, curl) {
+GetAllAuthors <- function(host, sectionId, curl) {
   tryCatch({  
-    vURL = paste0(host, "rest/mobile/getAllAuthors/", communityId)
+    vURL = paste0(host, "rest/mobile/getAllAuthors/", sectionId)
     fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
   }, error = function(e) {
     return(e)
   })
 }
 
-SelectCommunity <- function(host, communityId, curl) {
+SelectCommunity <- function(host, sectionId, curl) {
   tryCatch({  
-    vURL = paste0(host, "rest/account/selectSection/", communityId)
+    vURL = paste0(host, "rest/account/selectSection/", sectionId)
     fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
   }, error = function(e) {
     return(e)

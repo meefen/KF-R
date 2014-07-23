@@ -16,7 +16,7 @@ library(tm)
 host = "http://132.203.154.41:8080/kforum/"
 # host = "http://kf.utoronto.ca:8080/kforum/"
 username = "bodong" # YOUR_USERNAME
-password = "000000" # YOUR_PASSWORD
+password = "00000" # YOUR_PASSWORD
 
 ## Create a curl handle that will be shared among API calls
 curl = CreateCurlHandle()
@@ -100,7 +100,7 @@ views$title # view titles
 
 ```{r}
 ## 4. Inspect one view
-viewId = views[15, "guid"] # I'm interested in view #15
+viewId = views[4, "guid"] # I'm interested in view #15
 view = GetView(host, viewId, curl)
 ```
 
@@ -150,5 +150,31 @@ data.frame(term=names(tmp), freq=tmp, row.names=NULL)
 
 # overlap between my freq terms and shared freq terms
 intersect(myFreqTerms, freqTerms)
+```
+
+## SNA
+
+```{r}
+logs = GetLogs(host, viewId, curl)
+authors = GetAllAuthors(host, sectionId, curl)
+
+print(dim(authors))
+    
+primaryAuthorIds <- posts$primaryAuthorId
+names(primaryAuthorIds) = unique(posts$guid)
+authornames <- authors$userName
+names(authornames) = unique(authors$guid)
+
+readlogs = subset(logs, operationType=="READ" & entityType=="POST")
+readlogs = data.frame("from"=readlogs$userName, 
+                      "to"=authornames[primaryAuthorIds[readlogs$entityId]], 
+                      timestamp=kf.sna.time(readlogs$accessTime))
+
+library(igraph)
+df <- data.frame("source"=readlogs$from, "target"=readlogs$to)
+g <- graph.data.frame(df, directed=TRUE)
+plot(g, layout=layout.circle, 
+     vertex.size=15, vertex.label.color="black", vertex.color="red", 
+     edge.arrow.size=0.5, edge.curved=F)
 ```
 
