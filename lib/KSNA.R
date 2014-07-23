@@ -52,7 +52,7 @@ kf.sna.createigraph = function(){
 kf.sna.gephi.static = function(){
   library(rgexf)
   gexf <- igraph.to.gexf(kf.sna.createigraph())
-  print(gexf, "kf.gexf")
+  print(gexf, "kf.static.gexf")
 }
 
 kf.sna.gephi = function(){ #dynamic
@@ -61,13 +61,17 @@ kf.sna.gephi = function(){ #dynamic
   readlogs = kf.sna.readlogs.aggregated()
   edges = data.frame("source"=readlogs$from, "target"=readlogs$to)
   edges_dynamic = data.frame("start"=kf.sna.to.gephitime(readlogs$timestamp), "end"=NA)
-  write.gexf(nodes = authors, edges = edges, edgeDynamic = edges_dynamic, tFormat="dateTime", defaultedgetype = "directed", output = "kfdynamic.gexf")
-  #write.gexf(nodes = nodes_df, edges = edges_df, edgesAtt = edges_att, nodesVizAtt = nodes_att_viz, edgesVizAtt = edges_att_viz, defaultedgetype = "undirected", output = "lesmis.gexf")}
+  write.gexf(nodes = authors, edges = edges, edgeDynamic = edges_dynamic, tFormat="dateTime", defaultedgetype = "directed", output = "kf.gexf")
+  #write.gexf(nodes = authors, edges = edges, edgeDynamic = edges_dynamic, tFormat="date", defaultedgetype = "directed", output = "kf.gexf")
 }
 
 kf.sna.to.gephitime = function(time){
-  return (as.character(time, "%Y-%m-%dT%H:%M:%S"))
+   return (as.character(time, "%Y-%m-%dT%H:%M:%S"))
 }
+
+# kf.sna.to.gephitime = function(time){
+#   return (as.character(time, "%Y-%m-%d"))
+# }
 
 kf.sna.condor3 = function(){
   authors = data.frame("id"=authors$userName, "name"=authors$userName, "timestamp"=NA)
