@@ -64,3 +64,32 @@ GetView <- function(host, viewId, curl) {
   view$viewPostRefs$postInfo$body_text = StripHTMLTags(view$viewPostRefs$postInfo$body)
   return(view)
 }
+
+GetLogs <- function(host, viewId, curl) {
+  tryCatch({  
+    vURL = paste0(host, "rest/mobile/getPostHistoriesForView/", viewId)
+    fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+  }, error = function(e) {
+    return(e)
+  })
+}
+
+GetAllAuthors <- function(host, communityId, curl) {
+  tryCatch({  
+    vURL = paste0(host, "rest/mobile/getAllAuthors/", communityId)
+    fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+  }, error = function(e) {
+    return(e)
+  })
+}
+
+SelectCommunity <- function(host, communityId, curl) {
+  tryCatch({  
+    vURL = paste0(host, "rest/account/selectSection/", communityId)
+    fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+  }, error = function(e) {
+    return(e)
+  })
+}
+
+
