@@ -65,10 +65,18 @@ GetView <- function(host, viewId, curl) {
   return(view)
 }
 
-GetLogs <- function(host, viewId, curl) {
-  tryCatch({  
-    vURL = paste0(host, "rest/mobile/getPostHistoriesForView/", viewId)
-    fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+GetLogs <- function(host, viewIds, curl) {
+  ### Get post histories from views
+  ### Note: viewIds is a vector
+  
+  tryCatch({
+    logs = lapply(viewIds, function(viewId) {
+      vURL = paste0(host, "rest/mobile/getPostHistoriesForView/", viewId)
+      df = fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+      if(ncol(df) == 5) df$userName <- NA # strangely some views returned df with 5 cols
+      return(df)
+    })
+    do.call("rbind", logs)
   }, error = function(e) {
     return(e)
   })

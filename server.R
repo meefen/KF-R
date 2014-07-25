@@ -17,27 +17,11 @@ shinyServer(function(input, output, session) {
   ## Cache authorId, sectionId
   authorId = NULL
   sectionId = NULL
-  #   curl <- CreateCurlHandle() #DEBUG
-  #   authorId = "cc1f8d0d-9ae9-428a-beb1-815b650973d8" # DEBUG
-  #   sectionId = "5bb8b862-88d8-4dfd-bad8-71b0a069dd6a" # DEBUG
   
-  auth <- reactive({
-    ### Reactive expression to authenticate a user
-    ### returns authentication results
-    ###   NULL    - login never attempted
-    ###   list()  - login failed
-    ###   a df    - login succeeded
-    
-    if (input$doLogin == 0) {
-      return(NULL)
-    }
-    
-    isolate({
-      curl <<- CreateCurlHandle() # create a new curl handle for each authentication
-      Authenticate(input$host, input$username, input$password, curl)
-    })
-  })
-  
+  ###############################################
+  ###             Output functions            ###
+  ### dependent on reactive expressions below ###
+  ###############################################
   
   output$selectSection <- renderUI({
     ### Update KF section selection UI
@@ -58,18 +42,6 @@ shinyServer(function(input, output, session) {
         actionButton("doSelect", label = "Go!")
       )
     }
-  })
-  
-  getSectionViews <- reactive({
-    ### Get section views
-    
-    if (input$doSelect == 0) {
-      return(list())
-    }
-    
-    isolate({
-      GetSectionViews(input$host, input$sectionId, curl)
-    })
   })
   
   output$sectionInfo <- renderText({
@@ -95,6 +67,8 @@ shinyServer(function(input, output, session) {
                         "Login success! Please choose a community on the left-side panel."))
           } else {
             sectionId <<- input$sectionId
+            print(regs[regs$sectionId == sectionId, "guid"])
+            SelectCommunity(input$host, regs[regs$sectionId == sectionId, "guid"], curl)
             views <- getSectionViews()
             html <- paste0("<h2>Welcome ", regs$authorInfo.firstName[1], "!</h2><p>",
                            nrow(views), " views has been created in this community ",
@@ -107,27 +81,6 @@ shinyServer(function(input, output, session) {
         }
       }
     }
-  })
-  
-  getSectionPosts <- reactive({
-    ### Get all posts in a section
-    
-    if (input$doSelect == 0) {
-      return(list())
-    }
-    
-    GetSectionPosts(input$host, sectionId, curl)
-  })
-  
-  getMySectionPosts <- reactive({
-    ### Get my posts in a section
-    
-    if (input$doSelect == 0) {
-      return(list())
-    }
-    
-    posts <- getSectionPosts()
-    FilterPostsByAuthors(posts, authorId)
   })
   
   output$myPostsInfo <- renderText({
@@ -174,37 +127,7 @@ shinyServer(function(input, output, session) {
     })
   })
   
-  getMyPostTS <- reactive({
-    
-    posts <- getMySectionPosts()
-    
-    # sort posts first -- very important
-    posts$date = as.Date(round(strptime(posts$created, "%b %d, %Y %I:%M:%S %p"), "day"))
-    posts = posts[with(posts, order(date)), ]
-    N <- 1e4  # some magic number, possibly an overestimate
-    tmp <- data.frame(date = rep(as.Date(.leap.seconds[1]), N), 
-                      post = rep(0, N),
-                      vocab = rep(0, N), stringsAsFactors=FALSE)
-    j = 1
-    for(i in 1:nrow(posts)) {
-      post = posts[i, ]
-      date = post$date
-      
-      ## same date already in
-      idx = which(tmp$date == date)
-      if (length(idx) > 0) {
-        tmp[idx, 2] = tmp[idx, 2] + 1
-        tmp[idx, 3] = tmp[idx, 3] + CountWords(post$body_text)
-        next
-      }
-      x = max(tmp$post) + 1
-      y = max(tmp$vocab) + CountWords(post$body_text)
-      tmp[j, ] <- list(date, x, y)
-      j = j + 1
-    }
-    tmp = tmp[tmp$post != 0, ]
-    tmp[with(tmp, order(date)), ]
-  })
+  
   
   output$myPostsTS <- renderChart({
     ### Time series of my posts
@@ -246,7 +169,7 @@ shinyServer(function(input, output, session) {
       CalendarHeatmap(tmp, title="Posting Activities")
     })
   })
-
+  
   output$myPostsVocabTS <- renderChart({
     
     withProgress(session, {
@@ -326,8 +249,8 @@ shinyServer(function(input, output, session) {
       names(d4) <- NULL
       m$event(d4)
       m$addParams(dom = "myPostsTimeline")
-#       m$save("www/embed/myPostTimeline.html")
-#       m$save(paste0("embed/myPostTimeline_", authorId, ".html"))
+      #       m$save("www/embed/myPostTimeline.html")
+      #       m$save(paste0("embed/myPostTimeline_", authorId, ".html"))
       m
     })
   })
@@ -375,15 +298,15 @@ shinyServer(function(input, output, session) {
     tmp = data.frame(table(scaffolds))
     tmp = tmp[with(tmp, order(-Freq)), ]
     
-#     d1 <- dPlot(
-#       x = "Freq", 
-#       y = "scaffolds", 
-#       data = tmp, 
-#       type = 'bar') 
-#     d1$xAxis(type = "addMeasureAxis")
-#     d1$yAxis(type = "addCategoryAxis", orderRule = "Freq", horizontalAlign = "right")
-#     d1$addParams(dom = "scaffoldTracker")
-#     d1
+    #     d1 <- dPlot(
+    #       x = "Freq", 
+    #       y = "scaffolds", 
+    #       data = tmp, 
+    #       type = 'bar') 
+    #     d1$xAxis(type = "addMeasureAxis")
+    #     d1$yAxis(type = "addCategoryAxis", orderRule = "Freq", horizontalAlign = "right")
+    #     d1$addParams(dom = "scaffoldTracker")
+    #     d1
     
     n1 <- nPlot(Freq ~ scaffolds, data = tmp, color="scaffolds", type = "multiBarHorizontalChart")
     n1$chart(
@@ -391,8 +314,8 @@ shinyServer(function(input, output, session) {
       showLegend = FALSE,
       margin = list(left = 6 * max(nchar(scaffolds))),
       tooltipContent = "#! function(key, x, y) { 
-          return x + ': ' + Math.round(y) 
-          } !#"
+      return x + ': ' + Math.round(y) 
+  } !#"
     )
     n1$yAxis(axisLabel = "Frequency",
              tickFormat="#! function(d) {return d3.format(',f')(d);} !#")
@@ -400,46 +323,6 @@ shinyServer(function(input, output, session) {
     n1
   })
   
-  getGroupPostTS <- reactive({
-    
-    posts <- getSectionPosts()
-    
-    authors = unique(do.call("rbind", posts$authors)) # all authors (having duplicates)
-    
-    # sort posts first -- very important
-    posts$date = as.Date(round(strptime(posts$created, "%b %d, %Y %I:%M:%S %p"), "day"))
-    posts = posts[with(posts, order(date)), ]
-    N <- 1e4  # some magic number, possibly an overestimate
-    tmp <- data.frame(date = rep(as.Date(.leap.seconds[1]), N), 
-                      author = rep("", N), post = rep(0, N),
-                      vocab = rep(0, N), stringsAsFactors=FALSE)
-    j = 1
-    for(i in 1:nrow(posts)) {
-      post = posts[i, ]
-      date = post$date
-      
-      ## same author + same date already in
-      idx = which(tmp$author == post$primaryAuthorId & tmp$date == date)
-      if (length(idx) > 0) {
-        tmp[idx, 3] = tmp[idx, 3] + 1
-        tmp[idx, 4] = tmp[idx, 4] + CountWords(post$body_text)
-        next
-      }
-      ## else
-      idx = which(tmp$author == post$primaryAuthorId)
-      x = 1; y = CountWords(post$body_text)
-      if (length(idx) > 0) { ## same author already in
-        x = max(tmp$post[idx]) + x
-        y = max(tmp$vocab[idx]) + y
-      }
-      tmp[j, ] <- list(date, post$primaryAuthorId, x, y)
-      j = j + 1
-    }
-    tmp = tmp[tmp$post != 0, ]
-    tmp = merge(tmp, authors[, c("guid", "userName", "firstName")], 
-                by.x = "author", by.y = "guid")
-    tmp[with(tmp, order(userName, date)), ]
-  })
   
   output$groupWriting <- renderChart({
     
@@ -520,11 +403,55 @@ shinyServer(function(input, output, session) {
     
   })
   
+  output$selectView <- renderUI({
+    ### Update KF view selection UI
+    
+    if (length(regs) == 0) { # before login or when login fails
+      return(NULL)
+    } else {
+      views <- getSectionViews()
+      tmp <- list()
+      tmp[ views$title ] <- views$guid
+      
+      wellPanel(
+        selectInput(inputId="viewIds", choices=tmp, label="Select views:", multiple=TRUE),
+        actionButton("doSelectView", label="Go!")
+      )
+    }
+  })
   
-  
+  #   output$socialNetwork <- renderChart({
   output$socialNetwork <- renderPlot({
     
+    if (input$doSelectView == 0 & length(input$viewIds) == 0) {
+      return(list())
+    }
     
+    posts <- getSectionPosts()
+    authors <- getAllAuthors()
+    logs <- getLogs()
+    print(str(logs))
+    
+    primaryAuthorIds <- posts$primaryAuthorId
+    names(primaryAuthorIds) = unique(posts$guid)
+    authornames <- authors$userName
+    names(authornames) = unique(authors$guid)
+    
+    readlogs = subset(logs, operationType=="READ" & entityType=="POST")
+    readlogs = data.frame("from"=readlogs$userName, 
+                          "to"=authornames[primaryAuthorIds[readlogs$entityId]], 
+                          timestamp=kf.sna.time(readlogs$accessTime))
+    df <- data.frame("source"=readlogs$from, "target"=readlogs$to)
+    
+    library(igraph)
+    g <- graph.data.frame(df, directed=TRUE)
+    plot(g, layout=layout.circle, 
+         vertex.size=15, vertex.label.color="black", vertex.color="red", 
+         edge.arrow.size=0.5, edge.curved=F)
+    
+    #     ch = CreateChordDiagram(df)
+    #     ch$params$id <- "socialNetwork"
+    #     return(ch)
   })
   
   #   output$myPostsCalendar <- renderChart({
@@ -555,5 +482,158 @@ shinyServer(function(input, output, session) {
   #       return(p2)
   #     })
   #   })
+  
+  ####################################
+  ### Reactive expressions for API ###
+  ####################################
+  
+  auth <- reactive({
+    ### Reactive expression to authenticate a user
+    ### returns authentication results
+    ###   NULL    - login never attempted
+    ###   list()  - login failed
+    ###   a df    - login succeeded
+    
+    if (input$doLogin == 0) {
+      return(NULL)
+    }
+    
+    isolate({
+      curl <<- CreateCurlHandle() # create a new curl handle for each authentication
+      Authenticate(input$host, input$username, input$password, curl)
+    })
+  })
+  
+  getSectionViews <- reactive({
+    ### Get section views
+    
+    if (input$doSelect == 0) {
+      return(list())
+    }
+    
+    isolate({
+      GetSectionViews(input$host, input$sectionId, curl)
+    })
+  })
+  
+  getSectionPosts <- reactive({
+    ### Get all posts in a section
+    
+    if (input$doSelect == 0) {
+      return(list())
+    }
+    
+    GetSectionPosts(input$host, sectionId, curl)
+  })
+  
+  getMySectionPosts <- reactive({
+    ### Get my posts in a section
+    
+    if (input$doSelect == 0) {
+      return(list())
+    }
+    
+    posts <- getSectionPosts()
+    FilterPostsByAuthors(posts, authorId)
+  })
+  
+  getMyPostTS <- reactive({
+    ### Get time series data of my posts
+    
+    posts <- getMySectionPosts()
+    
+    # sort posts first -- very important
+    posts$date = as.Date(round(strptime(posts$created, "%b %d, %Y %I:%M:%S %p"), "day"))
+    posts = posts[with(posts, order(date)), ]
+    N <- 1e4  # some magic number, possibly an overestimate
+    tmp <- data.frame(date = rep(as.Date(.leap.seconds[1]), N), 
+                      post = rep(0, N),
+                      vocab = rep(0, N), stringsAsFactors=FALSE)
+    j = 1
+    for(i in 1:nrow(posts)) {
+      post = posts[i, ]
+      date = post$date
+      
+      ## same date already in
+      idx = which(tmp$date == date)
+      if (length(idx) > 0) {
+        tmp[idx, 2] = tmp[idx, 2] + 1
+        tmp[idx, 3] = tmp[idx, 3] + CountWords(post$body_text)
+        next
+      }
+      x = max(tmp$post) + 1
+      y = max(tmp$vocab) + CountWords(post$body_text)
+      tmp[j, ] <- list(date, x, y)
+      j = j + 1
+    }
+    tmp = tmp[tmp$post != 0, ]
+    tmp[with(tmp, order(date)), ]
+  })
+  
+  getGroupPostTS <- reactive({
+    ### Get time series data of group posts
+    
+    posts <- getSectionPosts()
+    
+    authors = unique(do.call("rbind", posts$authors)) # all authors (having duplicates)
+    
+    # sort posts first -- very important
+    posts$date = as.Date(round(strptime(posts$created, "%b %d, %Y %I:%M:%S %p"), "day"))
+    posts = posts[with(posts, order(date)), ]
+    N <- 1e4  # some magic number, possibly an overestimate
+    tmp <- data.frame(date = rep(as.Date(.leap.seconds[1]), N), 
+                      author = rep("", N), post = rep(0, N),
+                      vocab = rep(0, N), stringsAsFactors=FALSE)
+    j = 1
+    for(i in 1:nrow(posts)) {
+      post = posts[i, ]
+      date = post$date
+      
+      ## same author + same date already in
+      idx = which(tmp$author == post$primaryAuthorId & tmp$date == date)
+      if (length(idx) > 0) {
+        tmp[idx, 3] = tmp[idx, 3] + 1
+        tmp[idx, 4] = tmp[idx, 4] + CountWords(post$body_text)
+        next
+      }
+      ## else
+      idx = which(tmp$author == post$primaryAuthorId)
+      x = 1; y = CountWords(post$body_text)
+      if (length(idx) > 0) { ## same author already in
+        x = max(tmp$post[idx]) + x
+        y = max(tmp$vocab[idx]) + y
+      }
+      tmp[j, ] <- list(date, post$primaryAuthorId, x, y)
+      j = j + 1
+    }
+    tmp = tmp[tmp$post != 0, ]
+    tmp = merge(tmp, authors[, c("guid", "userName", "firstName")], 
+                by.x = "author", by.y = "guid")
+    tmp[with(tmp, order(userName, date)), ]
+  })
+  
+  getAllAuthors <- reactive({
+    ### Get all authors in a section
+    
+    if (input$doSelect == 0) {
+      return(list())
+    }
+    
+    GetAllAuthors(input$host, sectionId, curl)
+  })
+  
+  getLogs <- reactive({
+    ### Get logs in selected views
+    
+    if (input$doSelectView == 0) {
+      return(list())
+    }
+    
+    df = GetLogs(input$host, input$viewIds, curl)
+    print(str(df))
+    return(df)
+  })
+  
+  
   
 })

@@ -1,8 +1,9 @@
 ### UI
 
 require(markdown)
+require(ShinyDash)
 
-## For debug: read default testing account info
+## For debug: read default testing account info from a file
 auth = tryCatch(
   read.table("auth.txt"),
   error = function(e) data.frame(c("", "")),
@@ -20,14 +21,13 @@ shinyUI(
         sidebarPanel(
           wellPanel(
             textInput("host", label = "Host", 
-                      value = "http://132.203.154.41:8080/kforum/")
-            #                       value = "http://kf.utoronto.ca:8080/kforum/")
-            ,textInput("username", label = "Username", value = auth[1, 1])
-            ,textInput("password", label = "Password", value = auth[2, 1])
-            ,br()
-            ,actionButton("doLogin", label = "Login")
-          )
-          ,uiOutput("selectSection")
+                      value = auth[1, 1]), # value = "http://kf.utoronto.ca:8080/kforum/"
+            textInput("username", label = "Username", value = auth[2, 1]),
+            textInput("password", label = "Password", value = auth[3, 1]),
+            br(),
+            actionButton("doLogin", label = "Login")
+          ),
+          uiOutput("selectSection")
         ),
         mainPanel(
           htmlOutput("sectionInfo")
@@ -72,7 +72,9 @@ shinyUI(
           "-----",
           tabPanel(
             "Social Network",
-            h3("TODO"),
+            uiOutput("selectView"),
+            h3("Reading Network"),
+#             showOutput("socialNetwork2", "chord_diagram"),
             plotOutput("socialNetwork")
           )
         )
@@ -103,15 +105,6 @@ shinyUI(
                        showOutput("myPostsTS", "morris"),
                        h4("Calendar view"),
                        plotOutput("myPostsCalendar")),
-              #               tabPanel("Posting Activities",
-              #                        h4("Compare with community average"),
-              #                        showOutput("myPostsCompare", "polycharts"),
-              #                        h4("Time Series"),
-              #                        showOutput("myPostsTS", "nvd3"),
-              #                        h4("Calendar view"),
-              #                        plotOutput("myPostsCalendar")
-              #               ),
-              # chartOutput("myPostsCalendar", lib = "calmap", package = "rChartsCalendar"),
               tabPanel("What did I post?",
                        h4("Vocabulary Growth"),
                        showOutput("myPostsVocabTS", "morris"),
@@ -135,25 +128,15 @@ shinyUI(
       "About",
       tabPanel(
         "About",
-        fluidRow(
-          column(
-            5,
-            includeMarkdown("www/about.md"),
-            offset = 1
-          ),
-          column(
-            3,
-            img(class="img-polaroid",
-                src="http://blog.theironyard.com/wp-content/uploads/2014/01/cute-unicorn.jpg"),
-            tags$small(
-              "Source: ",
-              a(href="http://blog.theironyard.com/we-need-more-unicorns/",
-                "The Iron Yard")
-            )
-          )
+        column(
+          5,
+          includeMarkdown("www/about.md"),
+          offset = 1
         )
       )
     ),
+
+    ### progressInit
     conditionalPanel(FALSE, # to hide progressInit()
                      progressInit()
     )

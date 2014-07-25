@@ -11,6 +11,7 @@ CalendarHeatmap <- function(data, title="") {
   
   library(lattice)
   library(chron)
+  
   tryCatch({
     source("utils/calendarHeat.R")
   }, error = function(e) {
@@ -50,6 +51,101 @@ CountWords <- function(str) {
 kf.sna.time = function(time){
   return(strptime(time, "%b %d, %Y %I:%M:%S %p"))
 }
+
+# CreateChordDiagram <- function(df.edges) {
+#   ### Function to create ChordDiagram
+#   ### Reference: http://mostlyconjecture.com/2014/05/03/chord-diagrams-with-rcharts/
+#   ###
+#   ### Params: 
+#   ###     df.edges: a 2-column dataframe containing edges of the network
+#   ###               column 1: source; column 2: target
+#   
+#   d <- df.edges
+#   names(d) <- c("from", "to")
+#   
+#   require(igraph)
+#   require(RColorBrewer)
+#   require(plyr)
+#   require(ggplot2)
+#   require(doMC)
+#   require(foreach)
+#   require(rCharts)
+#   
+#   ChordDiagram = setRefClass('ChordDiagram', contains = 'rCharts', methods = list(
+#     initialize = function(){
+#       callSuper()
+#       LIB <<- get_lib("../www/chord_diagram")
+#       lib <<- "chord_diagram"
+#       templates$script <<- '
+#       <script type="text/javascript">
+#       function draw{{chartId}}(){
+#       var params = {{{ chartParams }}}
+#       var chart = {{{ chordD }}}
+#       
+#       d3.select("#" + params.id) 
+#       .datum({"data":{{{data}}}, "matrix":{{{matrix}}} })
+#       .call(chart)
+#       return chart;
+#       };
+#       
+#       $(document).ready(function(){
+#       draw{{chartId}}()
+#       });
+#       
+#       </script>'
+#     },
+#     getPayload = function(chartId){
+#       chordD = toChain(params[!(names(params) %in% c('dom', 'data', 'matrix'))], "d3.chordDiagram()")
+#       chartParams = RJSONIO:::toJSON(params)
+#       list(chordD = chordD, chartParams = chartParams, data=toJSONArray(params[['data']]),
+#            matrix=toJSONArray(params[['matrix']]), chartId = chartId, lib = basename(lib), liburl = LIB$url
+#       )
+#     }
+#   ))
+#   
+#   registerDoMC(4)
+#   g <- graph.data.frame(d)
+#   ## bipartite graphs require supplying new codes for sources and targets
+#   ## since graph.bipartite checks that elements in one group don't appear in
+#   ## the other.  since a node can be both source and target, the dataset as
+#   ## is violates that rule.
+#   sources <- unique(d$from)
+#   targets <- unique(d$to)
+#   from_id_dict <- data.frame(ids = (length(targets)+1):(length(sources) + length(targets)), 
+#                              row.names = sources)
+#   to_id_dict <- data.frame(ids = 1:length(targets), row.names = targets)
+#   d$target <- to_id_dict[as.character(d$to), "ids"]
+#   d$source <- from_id_dict[as.character(d$from), "ids"]
+#   edgelist <- sapply(apply(d[, c("source", "target")], 1, "["), "[")
+#   bg <- graph.bipartite(type = c(rep(0, length = length(targets)), rep(1, length = length(sources))), 
+#                         edges = edgelist, directed = T)
+#   targ_graph <- bipartite.projection(bg, which = "false")  # project second column
+#   V(targ_graph)$sources <- sapply(1:length(V(targ_graph)), function(x) {
+#     d$source[which(d$target == x)]
+#   })
+#   two_way_links <- foreach(v = V(targ_graph)$sources, .combine = rbind) %dopar% {
+#     unlist(sapply(V(targ_graph)$sources, function(x) {
+#       length(intersect(v, x))/length(x)
+#     }))
+#   }
+#   diag(two_way_links) <- 0
+#   row.names(two_way_links) <- 1:length(V(targ_graph))
+#   colnames(two_way_links) <- 1:length(V(targ_graph))
+#   
+#   sum_indegree <- ddply(d, .(target), nrow)
+#   #   sum_indegree <- sum_indegree[order(sum_indegree$V1, decreasing = T)[1:10], ]
+#   sum_indegree$color <- brewer.pal(nrow(sum_indegree), name = "BrBG")
+#   names(sum_indegree) <- c("name", "sum", "color")
+#   sum_indegree_matrix <- matrix(two_way_links[sum_indegree$name, sum_indegree$name], dimnames = NULL, 
+#                                 nrow = nrow(sum_indegree))
+#   sum_indegree$name <- row.names(to_id_dict) # use name
+#   ch <- ChordDiagram$new()
+#   ch$params$data = sum_indegree
+#   ch$params$matrix <- sum_indegree_matrix
+#   ch$params$height <- 700
+#   ch$params$width <- 700
+#   return(ch)
+# }
 
 # GetSignificantTermsArray <- function(s) {
 #   library(RCurl)
