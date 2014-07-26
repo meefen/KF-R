@@ -72,10 +72,11 @@ shinyUI(
           "-----",
           tabPanel(
             "Social Network",
+            tags$head(tags$script(src="js/network.force.js")),
             uiOutput("selectView"),
             h3("Reading Network"),
-#             showOutput("socialNetwork2", "chord_diagram"),
-            plotOutput("socialNetwork")
+            plotOutput("socialNetwork"),
+            forceDirectedNetworkOutput("socialNetworkJS")
           )
         )
       )

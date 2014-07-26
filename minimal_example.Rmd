@@ -2,6 +2,7 @@ Minimal example of using KF APIs in R
 ========================================================
 
 ```{r, echo=FALSE}
+library(knitr)
 opts_chunk$set(warning=FALSE, message=FALSE, fig.width=10)
 ```
 
@@ -32,6 +33,8 @@ regs[, c("sectionId", "sectionTitle")] # check sections I'm in
 ## Choose a section/community I'm interested in
 userId = regs$authorInfo.guid[2]
 sectionId = regs$sectionId[2]
+
+SelectCommunity(host, regs[2, "guid"], curl) # Notify the server; IMPORTANT
 ```
 
 ## 2. My posts
@@ -155,10 +158,9 @@ intersect(myFreqTerms, freqTerms)
 ## SNA
 
 ```{r}
-logs = GetLogs(host, viewId, curl)
+viewIds = head(views$guid)
+logs = GetLogs(host, viewIds, curl)
 authors = GetAllAuthors(host, sectionId, curl)
-
-print(dim(authors))
     
 primaryAuthorIds <- posts$primaryAuthorId
 names(primaryAuthorIds) = unique(posts$guid)

@@ -67,7 +67,6 @@ shinyServer(function(input, output, session) {
                         "Login success! Please choose a community on the left-side panel."))
           } else {
             sectionId <<- input$sectionId
-            print(regs[regs$sectionId == sectionId, "guid"])
             SelectCommunity(input$host, regs[regs$sectionId == sectionId, "guid"], curl)
             views <- getSectionViews()
             html <- paste0("<h2>Welcome ", regs$authorInfo.firstName[1], "!</h2><p>",
@@ -420,38 +419,27 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  #   output$socialNetwork <- renderChart({
   output$socialNetwork <- renderPlot({
     
-    if (input$doSelectView == 0 & length(input$viewIds) == 0) {
+    if(is.null(input$viewIds) | length(input$viewIds) == 0)
       return(list())
-    }
-    
-    posts <- getSectionPosts()
-    authors <- getAllAuthors()
-    logs <- getLogs()
-    print(str(logs))
-    
-    primaryAuthorIds <- posts$primaryAuthorId
-    names(primaryAuthorIds) = unique(posts$guid)
-    authornames <- authors$userName
-    names(authornames) = unique(authors$guid)
-    
-    readlogs = subset(logs, operationType=="READ" & entityType=="POST")
-    readlogs = data.frame("from"=readlogs$userName, 
-                          "to"=authornames[primaryAuthorIds[readlogs$entityId]], 
-                          timestamp=kf.sna.time(readlogs$accessTime))
-    df <- data.frame("source"=readlogs$from, "target"=readlogs$to)
     
     library(igraph)
-    g <- graph.data.frame(df, directed=TRUE)
+    g <- graph.data.frame(kf.sna.data(), directed=TRUE)
     plot(g, layout=layout.circle, 
          vertex.size=15, vertex.label.color="black", vertex.color="red", 
          edge.arrow.size=0.5, edge.curved=F)
+  })
+  
+  output$socialNetworkJS <- renderForceDirectedNetwork({
     
-    #     ch = CreateChordDiagram(df)
-    #     ch$params$id <- "socialNetwork"
-    #     return(ch)
+    if(is.null(input$viewIds) | length(input$viewIds) == 0)
+      return(list())
+    
+    library(igraph)
+    g <- graph.data.frame(kf.sna.data(), directed=TRUE)
+    print(as.matrix(get.adjacency(g)))
+    as.matrix(get.adjacency(g))
   })
   
   #   output$myPostsCalendar <- renderChart({
@@ -630,10 +618,32 @@ shinyServer(function(input, output, session) {
     }
     
     df = GetLogs(input$host, input$viewIds, curl)
-    print(str(df))
     return(df)
   })
   
-  
+  kf.sna.data <- reactive({
+    ### Get SNA data
+    
+    if(is.null(input$viewIds) | length(input$viewIds) == 0)
+      return(list())
+    
+    posts <- getSectionPosts()
+    authors <- getAllAuthors()
+    logs <- getLogs()
+    
+    primaryAuthorIds <- posts$primaryAuthorId
+    names(primaryAuthorIds) = unique(posts$guid)
+    authornames <- authors$userName
+    names(authornames) = unique(authors$guid)
+    print(logs)
+    
+    readlogs = subset(logs, operationType=="READ" & entityType=="POST")
+    readlogs = data.frame("from"=readlogs$userName, 
+                          "to"=authornames[primaryAuthorIds[readlogs$entityId]], 
+                          timestamp=kf.sna.time(readlogs$accessTime))
+    df = data.frame("source"=readlogs$from, "target"=readlogs$to)
+    
+    df
+  })
   
 })
