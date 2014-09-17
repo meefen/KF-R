@@ -399,13 +399,13 @@ shinyServer(function(input, output, session) {
   
   output$semanticOverlap <- renderChart({
     
-    
+    return(NULL)
   })
   
   output$selectView <- renderUI({
     ### Update KF view selection UI
     
-    if (length(regs) == 0) { # before login or when login fails
+    if (length(auth()) == 0) { # before login or when login fails
       return(NULL)
     } else {
       views <- getSectionViews()
@@ -421,14 +421,20 @@ shinyServer(function(input, output, session) {
   
   output$socialNetwork <- renderPlot({
     
-    if(is.null(input$viewIds) | length(input$viewIds) == 0)
-      return(list())
+    if (input$doSelectView == 0) {
+      return(NULL)
+    }
     
-    library(igraph)
-    g <- graph.data.frame(kf.sna.data(), directed=TRUE)
-    plot(g, layout=layout.circle, 
-         vertex.size=15, vertex.label.color="black", vertex.color="red", 
-         edge.arrow.size=0.5, edge.curved=F)
+    isolate({
+      if(is.null(input$viewIds) | length(input$viewIds) == 0)
+        return(list())
+      
+      library(igraph)
+      g <- graph.data.frame(kf.sna.data(), directed=TRUE)
+      plot(g, layout=layout.circle, 
+           vertex.size=15, vertex.label.color="black", vertex.color="red", 
+           edge.arrow.size=0.5, edge.curved=F)
+    })
   })
   
   output$socialNetworkJS <- renderForceDirectedNetwork({
