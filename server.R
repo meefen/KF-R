@@ -438,7 +438,7 @@ shinyServer(function(input, output, session) {
     
     library(igraph)
     g <- graph.data.frame(kf.sna.data(), directed=TRUE)
-    print(as.matrix(get.adjacency(g)))
+    #print(as.matrix(get.adjacency(g)))
     as.matrix(get.adjacency(g))
   })
   
@@ -635,7 +635,7 @@ shinyServer(function(input, output, session) {
     names(primaryAuthorIds) = unique(posts$guid)
     authornames <- authors$userName
     names(authornames) = unique(authors$guid)
-    print(logs)
+    #print(logs)
     
     readlogs = subset(logs, operationType=="READ" & entityType=="POST")
     readlogs = data.frame("from"=readlogs$userName, 

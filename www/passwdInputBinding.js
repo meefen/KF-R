@@ -9,7 +9,7 @@ jQuery(function($) {
       return Shiny.InputBinding.prototype.getId.call(this, el) || el.name;
     },
     getValue: function(el) {
-      return md5(el.value);
+      return el.value;
     },
     setValue: function(el, value) {
       el.value = value;
