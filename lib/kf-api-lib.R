@@ -24,9 +24,19 @@ CreateCurlHandle <- function() {
   return(curl)
 }
 
+EnsureHost <- function(host) {
+  ### Ensure host ends with '/'
+  
+  if(grepl("\\/$", host))
+    host
+  else
+    paste0(host, "/")
+}
+
 Authenticate <- function(host, username, password, curl) {
   ### Authenticate user, and return authentication results
   
+  host = EnsureHost(host)
   loginURL = paste0(host, loginURL)
   auth = list(userName=username, password=password)
   tryCatch({
@@ -43,6 +53,7 @@ Authenticate <- function(host, username, password, curl) {
 GetSectionPosts <- function(host, sectionId, curl) {
   ### Get posts in a section
   
+  host = EnsureHost(host)
   pURL = paste0(host, postsURL, sectionId)
   df = fromJSON(getURL(pURL, curl=curl), flatten = TRUE)
   df$body_text = StripHTMLTags(df$body)
@@ -52,6 +63,7 @@ GetSectionPosts <- function(host, sectionId, curl) {
 GetSectionViews <- function(host, sectionId, curl) {
   ### Get views in a section
   
+  host = EnsureHost(host)
   vURL = paste0(host, viewsURL, sectionId)
   fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
 }
@@ -59,6 +71,7 @@ GetSectionViews <- function(host, sectionId, curl) {
 GetView <- function(host, viewId, curl) {
   ### Get view info
   
+  host = EnsureHost(host)
   vURL = paste0(host, viewURL, viewId)
   view = fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
   view$viewPostRefs$postInfo$body_text = StripHTMLTags(view$viewPostRefs$postInfo$body)
@@ -69,6 +82,7 @@ GetLogs <- function(host, viewIds, curl) {
   ### Get post histories from views
   ### Note: viewIds is a vector
   
+  host = EnsureHost(host)
   tryCatch({
     logs = lapply(viewIds, function(viewId) {
       vURL = paste0(host, "rest/mobile/getPostHistoriesForView/", viewId)
@@ -83,6 +97,7 @@ GetLogs <- function(host, viewIds, curl) {
 }
 
 GetAllAuthors <- function(host, sectionId, curl) {
+  host = EnsureHost(host)
   tryCatch({  
     vURL = paste0(host, "rest/mobile/getAllAuthors/", sectionId)
     fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
@@ -92,6 +107,7 @@ GetAllAuthors <- function(host, sectionId, curl) {
 }
 
 SelectCommunity <- function(host, sectionId, curl) {
+  host = EnsureHost(host)
   tryCatch({  
     vURL = paste0(host, "rest/account/selectSection/", sectionId)
     fromJSON(getURL(vURL, curl=curl), flatten=TRUE)

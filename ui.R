@@ -10,9 +10,18 @@ auth = tryCatch(
   warning = function(w)  data.frame(c("", ""))
 )
 
+passwdInput <- function(inputId, label, value="") {
+  tagList(
+    tags$label(label),
+    tags$input(id = inputId, type="password", value=value)
+  )
+}
+
 shinyUI(
   navbarPage(
-    "KF API Demo",
+    "KF Dash (v 0.01)",
+    
+    
     
     ### Login panel
     tabPanel(
@@ -23,7 +32,7 @@ shinyUI(
             textInput("host", label = "Host", 
                       value = auth[1, 1]), # value = "http://kf.utoronto.ca:8080/kforum/"
             textInput("username", label = "Username", value = auth[2, 1]),
-            textInput("password", label = "Password", value = auth[3, 1]),
+            passwdInput("password", label = "Password", value = auth[3, 1]),
             br(),
             actionButton("doLogin", label = "Login")
           ),
@@ -127,6 +136,13 @@ shinyUI(
     ### About panel
     tabPanel(
       "About",
+      # Add custom CSS & Javascript;
+      tagList(
+        tags$head(
+          tags$link(rel="stylesheet", type="text/css", href="style.css"),
+          tags$script(type="text/javascript", src = "passwdInputBinding.js")
+        )
+      ),
       tabPanel(
         "About",
         column(
