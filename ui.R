@@ -75,16 +75,19 @@ shinyUI(
           ),
           tabPanel(
             "Semantic Overlap",
-            h3("TODO"),
-            showOutput("semanticOverlap", "polycharts")
+            h3("TODO")
+            #showOutput("semanticOverlap", "polycharts")
           ),
           "-----",
           tabPanel(
             "Social Network",
-            tags$head(tags$script(src="js/network.force.js")),
+            includeHTML("www/js/network.force.js"),
+#             tags$head(tags$script(src="js/network.force.js")),
             uiOutput("selectView"),
             h3("Reading Network"),
+            h4("Circle layout"),
             plotOutput("socialNetwork"),
+            h4("Force-directed layout"),
             forceDirectedNetworkOutput("socialNetworkJS")
           )
         )
@@ -140,7 +143,7 @@ shinyUI(
       tagList(
         tags$head(
           tags$link(rel="stylesheet", type="text/css", href="style.css"),
-          tags$script(type="text/javascript", src = "passwdInputBinding.js"),
+          tags$script(type="text/javascript", src = "js/passwdInputBinding.js"),
           tags$head(includeScript("www/js/google-analytics.js"))
         )
       ),

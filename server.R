@@ -5,6 +5,7 @@ require(tm)
 require(xtable)
 require(plyr)
 require(reshape2)
+require(ENA)
 
 source("utils/utils.R") # Load utility functions
 source("lib/kf-api-lib.R") # Load KF API library
@@ -421,7 +422,7 @@ shinyServer(function(input, output, session) {
   
   output$socialNetwork <- renderPlot({
     
-    if (input$doSelectView == 0) {
+    if (is.null(input$doSelectView) || input$doSelectView == 0) {
       return(NULL)
     }
     
