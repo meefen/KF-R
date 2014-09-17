@@ -140,7 +140,8 @@ shinyUI(
       tagList(
         tags$head(
           tags$link(rel="stylesheet", type="text/css", href="style.css"),
-          tags$script(type="text/javascript", src = "passwdInputBinding.js")
+          tags$script(type="text/javascript", src = "passwdInputBinding.js"),
+          tags$head(includeScript("www/js/google-analytics.js"))
         )
       ),
       tabPanel(
