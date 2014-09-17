@@ -74,7 +74,7 @@ GetView <- function(host, viewId, curl) {
   host = EnsureHost(host)
   vURL = paste0(host, viewURL, viewId)
   view = fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
-  view$viewPostRefs$postInfo$body_text = StripHTMLTags(view$viewPostRefs$postInfo$body)
+  view$viewPostRefs$postInfo.body_text = StripHTMLTags(view$viewPostRefs$postInfo.body)
   return(view)
 }
 

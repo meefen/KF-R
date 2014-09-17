@@ -103,7 +103,7 @@ views$title # view titles
 
 ```{r}
 ## 4. Inspect one view
-viewId = views[4, "guid"] # I'm interested in view #15
+viewId = views[14, "guid"] # I'm interested in view #15
 view = GetView(host, viewId, curl)
 ```
 
@@ -125,8 +125,8 @@ paste0(round(100 * nrow(view$buildOns) / nrow(view$viewPostRefs), 2), "%")
 
 ```{r}
 # 4.2. Revisualize the view
-ggplot(view$viewPostRefs, aes(x=location$point$x, y=location$point$y)) + 
-  geom_text(aes(label=postInfo$title), hjust=0) + 
+ggplot(view$viewPostRefs, aes(x=location.point.x, y=location.point.y)) + 
+  geom_text(aes(label=postInfo.title), hjust=0) + 
   ggtitle(view$title) + 
   scale_y_reverse() + theme_bw() + 
   theme(axis.title=element_blank(), 
@@ -139,7 +139,7 @@ ggplot(view$viewPostRefs, aes(x=location$point$x, y=location$point$y)) +
 
 ```{r, results='hide'}
 # 4.3. Top terms in the view
-notes = Corpus(VectorSource(view$viewPostRefs$postInfo$body_text))
+notes = Corpus(VectorSource(view$viewPostRefs$postInfo.body_text))
 dtm <- DocumentTermMatrix(notes, control = list(
   stopwords = TRUE, minWordLength = 3, 
   removeNumbers = TRUE, removePunctuation = TRUE))
@@ -158,7 +158,8 @@ intersect(myFreqTerms, freqTerms)
 ## SNA
 
 ```{r}
-viewIds = head(views$guid)
+viewIds = views$guid[14]
+# viewIds = head(views$guid)
 logs = GetLogs(host, viewIds, curl)
 authors = GetAllAuthors(host, sectionId, curl)
     
@@ -179,4 +180,23 @@ plot(g, layout=layout.circle,
      vertex.size=15, vertex.label.color="black", vertex.color="red", 
      edge.arrow.size=0.5, edge.curved=F)
 ```
+
+## Personal collaboration
+
+### Whom am I reading?
+
+TODO: Get the top 5 people who are reading my notes. Results should be presented as a table, with two columns - one is their first name, and the other is the count. The table should be sorted by the count, and then the name.
+
+Hint: `userId` decides the current author; use `GetLogs(host, viewIds, curl)` above (in SNA) to get reading log; then find out the top readers. Note: It's okay to restrict the search in one view.
+
+### Whom am I building on?
+
+TODO: Get the top 5 people who are building on my notes. Results should be similar to the above.
+
+
+### Who are building on me?
+
+
+
+
 
