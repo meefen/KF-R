@@ -189,6 +189,13 @@ TODO: Get the top 5 people who are reading my notes. Results should be presented
 
 Hint: `userId` decides the current author; use `GetLogs(host, viewIds, curl)` above (in SNA) to get reading log; then find out the top readers. Note: It's okay to restrict the search in one view.
 
+### Who are reading me?
+
+Similar as above.
+
+
+
+
 ### Whom am I building on?
 
 TODO: Get the top 5 people who are building on my notes. Results should be similar to the above.
