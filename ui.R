@@ -1,6 +1,8 @@
 ### UI
 
 require(markdown)
+require(shiny)
+require(shinyIncubator)
 require(ShinyDash)
 
 ## For debug: read default testing account info from a file
@@ -21,16 +23,17 @@ shinyUI(
   navbarPage(
     "KF Dash (v 0.01)",
     
-    
-    
     ### Login panel
     tabPanel(
       "Login",
       sidebarLayout(
         sidebarPanel(
           wellPanel(
-            textInput("host", label = "Host", 
-                      value = auth[1, 1]), # value = "http://kf.utoronto.ca:8080/kforum/"
+            selectInput("host",
+                        label = "Host",
+                        choices = c("Test server" = auth[1, 1], "Production server" = "http://kf.utoronto.ca:8080/kforum/")),
+#             textInput("host", label = "Host", 
+#                       value = auth[1, 1]), # value = "http://kf.utoronto.ca:8080/kforum/"
             textInput("username", label = "Username", value = auth[2, 1]),
             passwdInput("password", label = "Password", value = auth[3, 1]),
             br(),
@@ -53,42 +56,43 @@ shinyUI(
       ),
       conditionalPanel(
         "input.doLogin > 0", # DEBUG
-        navlistPanel(
-          "Group Analytics",
-          tabPanel(
-            "Summary",
-            htmlOutput("groupInfo")
-          ),
-          "-----",
-          tabPanel(
-            "ScaffoldTracker",
-            showOutput("scaffoldTracker", "nvd3")
-          ),
-          "-----",
-          tabPanel(
-            "Writing",
-            tabsetPanel(
-              type = "pills", 
-              tabPanel("Writing Activities", showOutput("groupWriting", "nvd3")),
-              tabPanel("Vocabulary Growth", showOutput("groupWritingVocab", "nvd3"))
+        sidebarPanel(
+          htmlOutput("groupInfo"),
+          uiOutput("selectView"),
+          # uiOutput("selectView"),
+          width = 3
+        ),
+        mainPanel(
+          tabsetPanel(
+            type = "pills",
+            tabPanel(
+              "Epistemic",
+              h4("Scaffold Tracker"),
+              showOutput("scaffoldTracker", "nvd3")
+            ),
+            tabPanel(
+              "Social",
+              includeHTML("www/js/network.force.js"),
+              # tags$head(tags$script(src="js/network.force.js")),
+              h3("Reading Network"),
+              h4("Circle layout"),
+              plotOutput("socialNetwork"),
+              h4("Force-directed layout"),
+              forceDirectedNetworkOutput("socialNetworkJS")
+            ),
+            tabPanel(
+              "Temporal",
+              h3("Writing Activities"), 
+              showOutput("groupWriting", "nvd3"),
+              h3("Vocabulary Growth"), 
+              showOutput("groupWritingVocab", "nvd3")
+            ),
+            tabPanel(
+              "Semantic",
+              h4("Concept Cloud"),
+              plotOutput("conceptCloud")
+              #showOutput("semanticOverlap", "polycharts")
             )
-          ),
-          tabPanel(
-            "Semantic Overlap",
-            h3("TODO")
-            #showOutput("semanticOverlap", "polycharts")
-          ),
-          "-----",
-          tabPanel(
-            "Social Network",
-            includeHTML("www/js/network.force.js"),
-#             tags$head(tags$script(src="js/network.force.js")),
-            uiOutput("selectView"),
-            h3("Reading Network"),
-            h4("Circle layout"),
-            plotOutput("socialNetwork"),
-            h4("Force-directed layout"),
-            forceDirectedNetworkOutput("socialNetworkJS")
           )
         )
       )
@@ -103,39 +107,34 @@ shinyUI(
       ),
       conditionalPanel(
         "input.doLogin > 0", # DEBUG
-        navlistPanel(
-          "My Contributions",
-          
-          tabPanel(
-            "Posts",
-            tabsetPanel(
-              type = "pills", 
-              tabPanel("Summary", htmlOutput("myPostsInfo")),
-              tabPanel("How many did I post?",
-                       showOutput("myPostsCompare", "polycharts")),
-              tabPanel("When did I post?",
-                       h4("Time Series"),
-                       showOutput("myPostsTS", "morris"),
-                       h4("Calendar view"),
-                       plotOutput("myPostsCalendar")),
-              tabPanel("What did I post?",
-                       h4("Vocabulary Growth"),
-                       showOutput("myPostsVocabTS", "morris"),
-                       h4("Top Terms"),
-                       tableOutput("myPostsTerms")),
-              tabPanel("Timeline",
-                       showOutput("myPostsTimeline", "timeline"))
-            )
-          ),
-          
-          tabPanel(
-            "Collaboration",
-            h3("TODO")
+        sidebarPanel(
+          htmlOutput("myInfo"),
+          htmlOutput("myOverviewStats"),
+          uiOutput("selectView2"),
+          width = 3
+        ),
+        mainPanel(
+          tabsetPanel(
+            type = "pills",
+            tabPanel("How many did I post?",
+                     showOutput("myPostsCompare", "polycharts")),
+            tabPanel("When did I post?",
+                     h4("Time Series"),
+                     showOutput("myPostsTS", "morris"),
+                     h4("Calendar view"),
+                     plotOutput("myPostsCalendar")),
+            tabPanel("What did I post?",
+                     h4("Vocabulary Growth"),
+                     showOutput("myPostsVocabTS", "morris"),
+                     h4("Top Terms"),
+                     tableOutput("myPostsTerms")),
+            tabPanel("Collaboration",
+                     showOutput("myPostsTimeline", "timeline"))
           )
         )
       )
     ),
-    
+
     ### About panel
     tabPanel(
       "About",

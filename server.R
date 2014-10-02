@@ -6,6 +6,9 @@ require(xtable)
 require(plyr)
 require(reshape2)
 require(ENA)
+require(dplyr)
+require(shiny)
+require(shinyIncubator)
 
 source("utils/utils.R") # Load utility functions
 source("lib/kf-api-lib.R") # Load KF API library
@@ -18,6 +21,8 @@ shinyServer(function(input, output, session) {
   ## Cache authorId, sectionId
   authorId = NULL
   sectionId = NULL
+  communityInfo <- NULL
+  viewIds = NULL
   
   ###############################################
   ###             Output functions            ###
@@ -68,13 +73,14 @@ shinyServer(function(input, output, session) {
                         "Login success! Please choose a community on the left-side panel."))
           } else {
             sectionId <<- input$sectionId
-            SelectCommunity(input$host, regs[regs$sectionId == sectionId, "guid"], curl)
-            views <- getSectionViews()
+            communityInfo <<- SelectCommunity(input$host, regs[regs$sectionId == sectionId, "guid"], curl)
+            views <- tbl_df(getSectionViews()) %>% filter(active == TRUE)
+            newviews = arrange(views, desc(created)) %>% head(10)
             html <- paste0("<h2>Welcome ", regs$authorInfo.firstName[1], "!</h2><p>",
                            nrow(views), " views has been created in this community ",
-                           "from ", substr(min(views$created), 1, 12), 
-                           " to ", substr(max(views$created), 1, 12), "</p>",
-                           HTMLUL(views$title),
+                           "from ", substr(min(views$created), 1, 10), 
+                           " to ", substr(max(views$created), 1, 10), ".</p><p>Below are the most recent views:</p>",
+                           HTMLUL(newviews$title),
                            "<h5>Please proceed to analytic tools through the navigation bar.</h5>")
             HTML(html)
           }
@@ -83,7 +89,15 @@ shinyServer(function(input, output, session) {
     }
   })
   
-  output$myPostsInfo <- renderText({
+  output$myInfo <- renderText({
+    
+    html <- paste0("<h3>", paste(communityInfo$currentAuthor$firstName, 
+                                 communityInfo$currentAuthor$lastName),
+                   "</h3><span>", communityInfo$userRole, "</span>")
+    HTML(html)
+  })
+  
+  output$myOverviewStats <- renderText({
     
     withProgress(session, {
       setProgress(message = "May take a while... please wait", 
@@ -96,11 +110,10 @@ shinyServer(function(input, output, session) {
       coAuthors = do.call("rbind", myPosts$authors)
       pIdeas = do.call("rbind", myPosts$promisingIdeas)
       
-      html <- paste0("<h2>Summary of My Posts</h2><ul>",
-                     "<li># of posts: ", nrow(myPosts), "</li>",
-                     "<li># of coauthors: ", length(unique(coAuthors$guid))-1, "</li>",
-                     "<li># of promising ideas: ", nrow(pIdeas), "</li>",
-                     "<li># of words: ", sum(CountWords(myPosts$body_text)), "</li></ul>")
+      html <- paste0("<p></p><pre><ul><li>", nrow(myPosts), " posts</li>",
+                     "<li>", length(unique(coAuthors$guid))-1, " coauthors</li>",
+                     "<li>", nrow(pIdeas), " promising ideas</li>",
+                     "<li>", sum(CountWords(myPosts$body_text)), " words</li></ul></pre>")
       HTML(html)
     })
   })
@@ -126,8 +139,6 @@ shinyServer(function(input, output, session) {
       p
     })
   })
-  
-  
   
   output$myPostsTS <- renderChart({
     ### Time series of my posts
@@ -273,14 +284,13 @@ shinyServer(function(input, output, session) {
         return(df$guid)
       ))
       
-      html <- paste0("<h2>Summary of My Community</h2><ul>",
-                     "<li># of posts: ", nrow(posts), "</li>",
-                     "<li># of authors: ", length(unique(authorIds)), "</li>",
-                     "<li># of promising ideas: ", length(pIdeaIds), "</li>",
-                     "<li># of words: ", sum(CountWords(posts$body_text)), "</li></ul>")
+      html <- paste0("<h4>",communityInfo$section$title, "</h4><pre><ul>",
+                     "<li>", length(unique(authorIds)), " authors</li>",
+                     "<li>", nrow(posts), " notes</li>",
+                     "<li>", length(pIdeaIds), " promising ideas</li>",
+                     "<li>", sum(CountWords(posts$body_text)), " words</li></ul></pre>")
       HTML(html)
     })
-    
   })
   
   output$scaffoldTracker <- renderChart({
@@ -321,6 +331,18 @@ shinyServer(function(input, output, session) {
              tickFormat="#! function(d) {return d3.format(',f')(d);} !#")
     n1$addParams(dom = "scaffoldTracker")
     n1
+  })
+  
+  # Make the wordcloud drawing predictable during a session
+  wordcloud_rep <- repeatable(wordcloud)
+  
+  output$conceptCloud <- renderPlot({
+    
+    posts <- getSectionPosts()
+    
+    v <- getTermMatrix(posts$body_text)
+    wordcloud_rep(names(v), v, scale=c(4,0.5), rot.per = 0,
+                  colors=brewer.pal(8, "Dark2"))
   })
   
   
@@ -414,8 +436,39 @@ shinyServer(function(input, output, session) {
       tmp[ views$title ] <- views$guid
       
       wellPanel(
+        width = 3,
         selectInput(inputId="viewIds", choices=tmp, label="Select views:", multiple=TRUE),
         actionButton("doSelectView", label="Go!")
+      )
+    }
+  })
+  
+  getSelectedViews <- reactive({
+    ### Reactive function to get currently selected views
+    
+    if(is.null(viewIds)) {
+      return(list())
+    }
+    
+    views <- getSectionViews()
+    tmp <- list()
+    tmp[ views$title ] <- views$guid
+  })
+  
+  output$selectView2 <- renderUI({
+    ### Update KF view selection UI
+    ### Note: unable to have two components with a same name in Shiny
+    
+    if (length(auth()) == 0) { # before login or when login fails
+      return(NULL)
+    } else {
+      views <- getSectionViews()
+      
+      
+      wellPanel(
+        width = 3,
+        selectInput(inputId="viewIds2", choices=tmp, label="Select views:", multiple=TRUE),
+        actionButton("doSelectView2", label="Go!")
       )
     }
   })

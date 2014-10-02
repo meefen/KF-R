@@ -12,6 +12,7 @@ viewURL  = "rest/content/getView/"
 source("utils/utils.R")
 
 library(jsonlite)
+suppressMessages(library(dplyr))
 
 CreateCurlHandle <- function() {
   ### Create a curl handle that will be shared among API calls
@@ -39,15 +40,29 @@ Authenticate <- function(host, username, password, curl) {
   host = EnsureHost(host)
   loginURL = paste0(host, loginURL)
   auth = list(userName=username, password=password)
+  
   tryCatch({
-    fromJSON(
+    regs = fromJSON(
       postForm(loginURL, .params = auth, curl=curl, style="POST"),
       flatten = TRUE
     )
+    tbl_df(regs) %>% arrange(desc(dateCreated))
   }, error = function(e) {
     return(list())
   })
+}
+
+SelectCommunity <- function(host, sectionId, curl) {
+  ### Tell the server that we are going to use data from this community
+  ### Required for any futher data queries
   
+  host = EnsureHost(host)
+  tryCatch({  
+    vURL = paste0(host, "rest/account/selectSection/", sectionId)
+    fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+  }, error = function(e) {
+    return(e)
+  })
 }
 
 GetSectionPosts <- function(host, sectionId, curl) {
@@ -65,7 +80,9 @@ GetSectionViews <- function(host, sectionId, curl) {
   
   host = EnsureHost(host)
   vURL = paste0(host, viewsURL, sectionId)
-  fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+  views = fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
+  views$created = StrpKFTime(views$created) # convert time
+  return(views)
 }
 
 GetView <- function(host, viewId, curl) {
@@ -97,6 +114,8 @@ GetLogs <- function(host, viewIds, curl) {
 }
 
 GetAllAuthors <- function(host, sectionId, curl) {
+  ### Get all authors in a section / community
+  
   host = EnsureHost(host)
   tryCatch({  
     vURL = paste0(host, "rest/mobile/getAllAuthors/", sectionId)
@@ -105,15 +124,3 @@ GetAllAuthors <- function(host, sectionId, curl) {
     return(e)
   })
 }
-
-SelectCommunity <- function(host, sectionId, curl) {
-  host = EnsureHost(host)
-  tryCatch({  
-    vURL = paste0(host, "rest/account/selectSection/", sectionId)
-    fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
-  }, error = function(e) {
-    return(e)
-  })
-}
-
-
