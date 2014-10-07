@@ -11,7 +11,7 @@ viewURL  = "rest/content/getView/"
 ### Load utility functions
 source("utils/utils.R")
 
-library(jsonlite)
+suppressMessages(library(jsonlite))
 suppressMessages(library(dplyr))
 
 CreateCurlHandle <- function() {

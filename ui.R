@@ -31,18 +31,18 @@ shinyUI(
           wellPanel(
             selectInput("host",
                         label = "Host",
-                        choices = c("Test server" = auth[1, 1], "Production server" = "http://kf.utoronto.ca:8080/kforum/")),
-#             textInput("host", label = "Host", 
-#                       value = auth[1, 1]), # value = "http://kf.utoronto.ca:8080/kforum/"
-            textInput("username", label = "Username", value = auth[2, 1]),
-            passwdInput("password", label = "Password", value = auth[3, 1]),
+                        choices = c("Test server" = "http://132.203.154.41:8080/kforum/", 
+                                    "Production server" = "http://kf.utoronto.ca:8080/kforum/")),
+            textInput("username", label = "Username", value = auth[1, 1]),
+            passwdInput("password", label = "Password", value = auth[2, 1]),
             br(),
             actionButton("doLogin", label = "Login")
           ),
           uiOutput("selectSection")
         ),
         mainPanel(
-          htmlOutput("sectionInfo")
+          htmlOutput("sectionInfo"),
+          uiOutput("selectView")
         )
       )
     ),
@@ -58,7 +58,6 @@ shinyUI(
         "input.doLogin > 0", # DEBUG
         sidebarPanel(
           htmlOutput("groupInfo"),
-          uiOutput("selectView"),
           # uiOutput("selectView"),
           width = 3
         ),
@@ -75,10 +74,10 @@ shinyUI(
               includeHTML("www/js/network.force.js"),
               # tags$head(tags$script(src="js/network.force.js")),
               h3("Reading Network"),
-              h4("Circle layout"),
-              plotOutput("socialNetwork"),
-              h4("Force-directed layout"),
-              forceDirectedNetworkOutput("socialNetworkJS")
+#               h4("Circle layout"),
+              plotOutput("socialNetwork")
+#               h4("Force-directed layout"),
+#               forceDirectedNetworkOutput("socialNetworkJS")
             ),
             tabPanel(
               "Temporal",
@@ -129,12 +128,27 @@ shinyUI(
                      h4("Top Terms"),
                      tableOutput("myPostsTerms")),
             tabPanel("Collaboration",
+                     h4("Who are reading me?"),
+                     tableOutput("readMe"),
+                     h4("Whom am I reading"),
+                     tableOutput("readByMe"),
                      showOutput("myPostsTimeline", "timeline"))
           )
         )
       )
     ),
-
+    
+    ### Admin / Teacher
+    tabPanel(
+      "Admin",
+      conditionalPanel(isAdmin,
+                       h3("Admin")
+      ),
+      conditionalPanel(!isAdmin,
+                       h3("You are not an admin...")
+      )
+    ),
+    
     ### About panel
     tabPanel(
       "About",
@@ -146,18 +160,16 @@ shinyUI(
           tags$head(includeScript("www/js/google-analytics.js"))
         )
       ),
-      tabPanel(
-        "About",
-        column(
-          5,
-          includeMarkdown("www/about.md"),
-          offset = 1
-        )
+      column(
+        5,
+        includeMarkdown("www/about.md"),
+        offset = 1
       )
     ),
-
+    
     ### progressInit
     conditionalPanel(FALSE, # to hide progressInit()
                      progressInit()
     )
-  ))
+  )
+)

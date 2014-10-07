@@ -8,6 +8,8 @@ library(memoise)
 
 source("force_directed_network.R")
 
+isAdmin = FALSE
+
 options(RCHART_LIB = c('polycharts', 'morris', "nvd3", "timeline", "dimple"))
 
 # Using "memoise" to automatically cache the results
