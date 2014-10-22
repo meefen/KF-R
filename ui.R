@@ -41,6 +41,7 @@ shinyUI(
           uiOutput("selectSection")
         ),
         mainPanel(
+          #verbatimTextOutput("clientdataText"),
           htmlOutput("sectionInfo"),
           uiOutput("selectView")
         )

@@ -12,12 +12,13 @@ source("lib/kf-api-lib.R") # load the function library
 library(ggplot2)
 library(ggthemes)
 library(tm)
+suppressMessages(library(dplyr))
 
 ## Login info
 host = "http://132.203.154.41:8080/kforum/"
 # host = "http://kf.utoronto.ca:8080/kforum/"
 username = "bodong" # YOUR_USERNAME
-password = "******" # YOUR_PASSWORD
+password = "000000" # YOUR_PASSWORD
 
 ## Create a curl handle that will be shared among API calls
 curl = CreateCurlHandle()
@@ -30,18 +31,21 @@ curl = CreateCurlHandle()
 regs = Authenticate(host, username, password, curl)
 regs[, c("sectionId", "sectionTitle")] # check sections I'm in
 
-## Choose a section/community I'm interested in
-userId = regs$authorInfo.guid[2]
-sectionId = regs$sectionId[2]
+# http://132.203.154.41:8080/kforum/kfsection.xhtml#kfview;registered=6a0fb6e6-8ed0-42cc-9320-ebab4e7b0d40;view=76875f36-0d24-458c-ab6d-12f0c6e9bebf
 
-SelectCommunity(host, regs[2, "guid"], curl) # Notify the server; IMPORTANT
+## Choose a section/community I'm interested in
+userId = regs$authorInfo.guid[1]
+sectionId = regs$sectionId[1]
+
+(communityInfo = SelectCommunity(host, regs[1, "guid"], curl)) # Notify the server; IMPORTANT
 ```
 
 ## 2. My posts
 
 ```{r}
 ## 2. My posts
-posts = GetSectionPosts(host, sectionId, curl)
+posts = tbl_df(GetSectionPosts(host, sectionId, curl))
+glimpse(posts)
 myPosts = FilterPostsByAuthors(posts, userId) # all my posts here
 # str(myPosts[1, ])
 ```
@@ -94,7 +98,8 @@ data.frame(term=names(tmp), freq=tmp, row.names=NULL)
 
 ```{r}
 ## 3. Views in my community
-views = GetSectionViews(host, sectionId, curl)
+views = tbl_df(GetSectionViews(host, sectionId, curl))
+glimpse(views)
 # str(views[1, ])
 views$title # view titles
 ```
@@ -103,7 +108,7 @@ views$title # view titles
 
 ```{r}
 ## 4. Inspect one view
-viewId = views[14, "guid"] # I'm interested in view #15
+viewId = views[2, "guid"] # I'm interested in view #15
 view = GetView(host, viewId, curl)
 ```
 
@@ -164,14 +169,14 @@ logs = GetLogs(host, viewIds, curl)
 authors = GetAllAuthors(host, sectionId, curl)
     
 primaryAuthorIds <- posts$primaryAuthorId
-names(primaryAuthorIds) = unique(posts$guid)
+names(primaryAuthorIds) = posts$guid
 authornames <- authors$userName
-names(authornames) = unique(authors$guid)
+names(authornames) = authors$guid
 
 readlogs = subset(logs, operationType=="READ" & entityType=="POST")
-readlogs = data.frame("from"=readlogs$userName, 
+readlogs = tbl_df(data.frame("from"=readlogs$userName, 
                       "to"=authornames[primaryAuthorIds[readlogs$entityId]], 
-                      timestamp=kf.sna.time(readlogs$accessTime))
+                      timestamp=kf.sna.time(readlogs$accessTime)))
 
 library(igraph)
 df <- data.frame("source"=readlogs$from, "target"=readlogs$to)
@@ -183,27 +188,85 @@ plot(g, layout=layout.circle,
 
 ## Personal collaboration
 
-### Whom am I reading?
+### Who are reading me?
 
 TODO: Get the top 5 people who are reading my notes. Results should be presented as a table, with two columns - one is their first name, and the other is the count. The table should be sorted by the count, and then the name.
 
 Hint: `userId` decides the current author; use `GetLogs(host, viewIds, curl)` above (in SNA) to get reading log; then find out the top readers. Note: It's okay to restrict the search in one view.
 
-### Who are reading me?
+```{r}
+# myName = communityInfo$currentAuthor$userName # get my username
+myName = "ymatsuzawa" # just for testing
+readlogs %>%
+  filter(to == myName) %>%
+  group_by(from) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+```
+
+### Whom am I reading?
 
 Similar as above.
 
-
+```{r}
+readlogs %>%
+  filter(from == myName) %>%
+  group_by(to) %>%
+  summarise(count = n()) %>%
+  arrange(desc(count))
+```
 
 
 ### Whom am I building on?
 
 TODO: Get the top 5 people who are building on my notes. Results should be similar to the above.
 
+This might be more complicated.
+
+```{r}
+# get all views
+viewIds = views$guid
+library(plyr)
+
+# get buildon links in all views
+buildons = laply(viewIds, function(id) {
+  print(id)
+  view = GetView(host, id, curl)
+  buildons = view$buildOns
+  if(length(buildons) == 0)
+    return(NULL)
+  posts = view$viewPostRefs[, c("guid", "postInfo.guid")]
+  buildons$built.ids = laply(buildons$built, function(x) {
+    posts$postInfo.guid[which(posts$guid == x)[1]]
+  })
+  buildons$buildsOn.ids = laply(buildons$buildsOn, function(x) {
+    posts$postInfo.guid[which(posts$guid == x)[1]]
+  })
+  return(buildons)
+})
+# buildons = do.call("rbind", buildons)
+
+# link/replace note ids with their primary author ids
+buildons$from = authornames[primaryAuthorIds[buildons$buildsOn.ids]]
+buildons$to = authornames[primaryAuthorIds[buildons$built.ids]]
+
+# count and summarize
+buildons %>%
+  select(from, to) %>%
+  filter(from == myName) %>%
+  group_by(to) %>%
+  dplyr::summarise(count = n()) %>% # mask the summarise function 
+  arrange(desc(count))
+```
+
 
 ### Who are building on me?
 
-
-
-
-
+```{r}
+buildons %>%
+  select(from, to) %>%
+  filter(to == myName) %>%
+  group_by(from) %>%
+  dplyr::summarise(link_count = n()) %>%
+  arrange(desc(link_count))
+```

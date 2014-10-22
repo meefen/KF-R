@@ -1,0 +1,266 @@
+---
+title: "KF Report Compiler"
+output: html_document
+runtime: shiny
+---
+
+```{r options, echo=FALSE}
+library(knitr)
+opts_chunk$set(warning=FALSE, message=FALSE, echo=FALSE, fig.width=10)
+options(rcharts.mode = 'iframe', rcharts.cdn = TRUE)
+knitr::opts_chunk$set(results = "asis", comment = NA)
+```
+
+```{r init}
+source("lib/kf-api-lib.R") # load the function library
+source("utils/utils.R") # Load utility functions
+
+library(ggplot2)
+library(lattice)
+library(rCharts)
+library(ggthemes)
+library(tm)
+suppressMessages(library(dplyr))
+suppressMessages(require(shinyIncubator))
+
+## Login info
+# host = "http://132.203.154.41:8080/kforum/"
+host = "http://kf.utoronto.ca:8080/kforum/"
+username = "bodong" # YOUR_USERNAME
+password = "19868873" # YOUR_PASSWORD
+
+## Create a curl handle that will be shared among API calls
+curl = CreateCurlHandle()
+
+## 1. User authentication
+regs = Authenticate(host, username, password, curl)
+# regs[, c("sectionId", "sectionTitle")] # check sections I'm in
+
+## Choose a section/community I'm interested in
+userId = regs$authorInfo.guid[1]
+sectionId = regs$sectionId[1]
+
+communityInfo = SelectCommunity(host, regs[1, "guid"], curl) # Notify the server; IMPORTANT
+
+## Do user control here
+if(communityInfo$userRole == "Manager") {
+  
+}
+```
+
+```{r dataprep}
+# all posts in the community
+posts <- tbl_df(GetSectionPosts(host, sectionId, curl))
+
+# all views
+views = tbl_df(GetSectionViews(host, sectionId, curl))
+
+# all authors
+authors = tbl_df(GetAllAuthors(host, sectionId, curl))
+
+# logs
+logs = tbl_df(GetLogs(host, views$guid, curl))
+
+# promising ids
+pIdeaIds = unlist(sapply(posts$promisingIdeas, function(df)
+  return(df$guid)
+))
+
+scaffolds <- unlist(sapply(posts$body, function(x) {
+  r <- regexpr("class=\"startLabelTag\">(.*?)</span>", x)
+  m <- regmatches(x, r)
+  gsub("class=\"startLabelTag\">|</span>", "", m)
+}))
+
+now = Sys.time()
+```
+
+## `r communityInfo$section$title`
+
+### Basic Information
+
+- `r nrow(authors)` authors
+- `r nrow(posts)` notes
+- `r length(pIdeaIds)` promising ideas
+- `r sum(CountWords(posts$body_text))` words
+
+
+## Community Activities
+
+__Posts__
+
+```{r}
+getPostTimeseries = reactive({
+  days = input$days
+  
+  fromDate = as.POSIXlt(round(now, "hour") - days * 3600 * 24)
+  posts$date = strptime(posts$created, "%b %d, %Y %I:%M:%S %p")
+  posts = posts[posts$date >= fromDate, ]
+  
+  if(days == 1) { ## in the past 24 hours, split by hours
+    posts$offset = as.integer(difftime(posts$date, fromDate, units="hours"))
+    
+    select(posts, guid, offset) %>% 
+      group_by(offset) %>%
+      summarise(count = n()) %>%
+      arrange(offset)
+  
+  } else {
+    posts$date = as.Date(round(strptime(posts$created, "%b %d, %Y %I:%M:%S %p"), "days"))
+    group_by(posts, date) %>%
+      summarise(count = n()) %>%
+      arrange(date)
+    }
+  })
+
+inputPanel(
+  sliderInput("days", 
+              "Number of Days:", 
+               value = 7,
+               min = 1, 
+               max = 120)
+)
+
+renderPlot({
+  
+  ts = getPostTimeseries()
+  if(input$days == 1) {
+    ggplot(data=ts, aes(x = offset, y = count)) +
+      geom_bar(stat="identity") + 
+      scale_x_continuous(breaks=seq(0, 24, 1), limits=c(0, 25)) + 
+      xlab("Hour") + theme_bw()
+  } else {
+    ggplot(data=ts, aes(x = date, y = count)) +
+      geom_bar(stat="identity", width = .3) + 
+      #scale_x_discrete(limits = c(min(ts$date)-1, max(ts$date)+1)) + 
+      xlab("Date") + theme_bw()
+  }
+})
+```
+
+__Scaffolds__
+
+```{r scaffolds, results = 'asis', comment = NA}
+tmp = data.frame(table(scaffolds))
+tmp = tmp[with(tmp, order(-Freq)), ]
+tmp <- within(tmp, 
+              scaffolds <- factor(scaffolds, 
+                                  levels=rev(as.character(scaffolds))))
+
+renderPlot({
+  ggplot(data=tmp, aes(x = scaffolds, y = Freq)) +
+    geom_bar(stat = "identity") +
+    coord_flip() + theme_bw()
+})
+```
+
+
+__Social network__
+
+```{r sna}
+
+getReadLogs = function() {
+  primaryAuthorIds <- posts$primaryAuthorId
+  names(primaryAuthorIds) = unique(posts$guid)
+  authornames <- authors$userName
+  names(authornames) = unique(authors$guid)
+  #print(logs)
+  
+  readlogs = subset(logs, operationType=="READ" & entityType=="POST")
+  data.frame("from"=readlogs$userName, 
+             "to"=authornames[primaryAuthorIds[readlogs$entityId]], 
+             timestamp=kf.sna.time(readlogs$accessTime))
+}
+
+
+rmarkdown::render_delayed({
+  renderPlot({
+    readlogs = getReadLogs()
+    snaData = data.frame("source"=readlogs$from, "target"=readlogs$to)
+    library(igraph)
+    g <- graph.data.frame(snaData, directed=TRUE)
+    plot(g, layout=layout.kamada.kawai,
+         vertex.size=15, vertex.label.color="black", vertex.color="red",
+         edge.arrow.size=0.5, edge.curved=F)
+    })
+  })
+```
+
+
+## Individuals
+
+Summary table
+
+
+Interactive table:
+row: students
+col: counts (notes written, words written, notes read)
+control: in the past day, week, month, ... + sort by ? (provided in table?)
+
+Interactive table: weekly activity
+similar but by week
+
+### Impact Analysis
+
+Interactive table:
+
+- Notes written
+- Promising ideas given
+- PI received
+- PI ratio
+- Build on given
+- Build on received
+- Build on ratio
+- Reference??
+
+## Custom report
+
+[Custom Report](kf-custom-report.Rmd)
+
+This R Markdown document is made interactive using Shiny. Unlike the more traditional workflow of creating static reports, you can now create documents that allow your readers to change the assumptions underlying your analysis and see the results immediately. 
+
+To learn more, see [Interactive Documents](http://rmarkdown.rstudio.com/authoring_shiny.html).
+
+## Inputs and Outputs
+
+You can embed Shiny inputs and outputs in your document. Outputs are automatically updated whenever inputs change.  This demonstrates how a standard R plot can be made interactive by wrapping it in the Shiny `renderPlot` function. The `selectInput` and `sliderInput` functions create the input widgets used to drive the plot.
+
+```{r, echo=FALSE}
+inputPanel(
+  selectInput("n_breaks", label = "Number of bins:",
+              choices = c(10, 20, 35, 50), selected = 20),
+  
+  sliderInput("bw_adjust", label = "Bandwidth adjustment:",
+              min = 0.2, max = 2, value = 1, step = 0.2)
+)
+
+renderPlot({
+  hist(faithful$eruptions, probability = TRUE, breaks = as.numeric(input$n_breaks),
+       xlab = "Duration (minutes)", main = "Geyser eruption duration")
+  
+  dens <- density(faithful$eruptions, adjust = input$bw_adjust)
+  lines(dens, col = "blue")
+})
+```
+
+## Embedded Application
+
+It's also possible to embed an entire Shiny application within an R Markdown document using the `shinyAppDir` function. This example embeds a Shiny application located in another directory:
+
+```{r, echo=FALSE}
+shinyAppDir(
+  system.file("examples/06_tabsets", package="shiny"),
+  options=list(
+    width="100%", height=550
+  )
+)
+```
+
+Note the use of the `height` parameter to determine how much vertical space the embedded application should occupy.
+
+You can also use the `shinyApp` function to define an application inline rather then in an external directory.
+
+In all of R code chunks above the `echo = FALSE` attribute is used. This is to prevent the R code within the chunk from rendering in the document alongside the Shiny components.
+
+
+

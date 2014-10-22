@@ -6,6 +6,14 @@ StripHTMLTags <- function(htmlString) {
   return(gsub("^ *|(?<= ) | *$", "", tmp, perl=T))
 }
 
+CleanJSONText = function(text) {
+  ## Clean json text that might cause lexical error when parsing
+  
+  text = gsub("\n|\t", "<br />", text)
+  gsub("(\\\\)([a-zA-Z])", " \\2", text) # get rid of backslash
+#   DumpText(text2)
+}
+
 StrpKFTime <- function(x, format = "%b %d, %Y %r") {
   ### convert KF time in str to POSIXlt
   
@@ -56,6 +64,14 @@ CountWords <- function(str) {
 
 kf.sna.time = function(time){
   return(strptime(time, "%b %d, %Y %I:%M:%S %p"))
+}
+
+DumpText = function(str, file = "dump.txt") {
+  ### Dump text to a file
+  
+  fileConn<-file(file)
+  writeLines(text, fileConn)
+  close(fileConn)
 }
 
 # CreateChordDiagram <- function(df.edges) {

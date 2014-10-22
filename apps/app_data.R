@@ -142,8 +142,7 @@ getAllAuthors <- reactive({
 getLogs <- reactive({
   ### Get logs in selected views
   
-  df = GetLogs(input$host, selectedViews, curl)
-  return(df)
+  GetLogs(input$host, selectedViews, curl)
 })
 
 getReadLogs <- reactive({

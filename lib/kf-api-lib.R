@@ -70,7 +70,11 @@ GetSectionPosts <- function(host, sectionId, curl) {
   
   host = EnsureHost(host)
   pURL = paste0(host, postsURL, sectionId)
-  df = fromJSON(getURL(pURL, curl=curl), flatten = TRUE)
+  text = getURL(pURL, curl=curl)
+  text = CleanJSONText(text)
+#   text = StripHTMLTags(text)
+  df = fromJSON(text, flatten = TRUE)
+#   df = rjson::fromJSON(text)
   df$body_text = StripHTMLTags(df$body)
   return(df)
 }
@@ -103,13 +107,17 @@ GetLogs <- function(host, viewIds, curl) {
   tryCatch({
     logs = lapply(viewIds, function(viewId) {
       vURL = paste0(host, "rest/mobile/getPostHistoriesForView/", viewId)
-      df = fromJSON(getURL(vURL, curl=curl), flatten=TRUE)
-      if(ncol(df) == 5) df$userName <- NA # strangely some views returned df with 5 cols
+      df = tryCatch(
+        fromJSON(getURL(vURL, curl=curl), flatten=TRUE),
+        error = function(e) NULL
+      )
+      if(!is.null(df) && ncol(df) == 5) 
+        df$userName <- NA # strangely some views returned df with 5 cols
       return(df)
     })
     do.call("rbind", logs)
   }, error = function(e) {
-    return(e)
+    print(e)
   })
 }
 
